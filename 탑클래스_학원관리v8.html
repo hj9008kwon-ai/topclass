@@ -611,16 +611,20 @@ function onAttendanceChange(ds, cls, sid, val) {
   const key = sessionKey(sid, cls);
   const limit = CLASS_CONFIG[cls]?.limit || 8;
 
-  // 출석으로 변경할 때만 회차 +1 (취소해도 절대 감소 안 함)
-  if (val === '출석' && prev !== '출석') {
+  // 핵심: 그날 이미 출석 카운트 된 적 있으면 (snapshotSession > 0) 중복 카운트 안 함
+  const alreadyCounted = cell.snapshotSession > 0;
+
+  if (val === '출석' && prev !== '출석' && !alreadyCounted) {
+    // 처음 출석 선택할 때만 +1
     const newTotal = getTotal(sid, cls) + 1;
     sessionTotals[key] = newTotal;
     cell.snapshotSession = newTotal;
     if (newTotal % limit === 0) payAlarms[key] = true;
+  } else if (val === '출석' && alreadyCounted) {
+    // 이미 카운트된 날: 출석으로 다시 선택해도 회차 변화 없음
+    // snapshotSession 그대로 유지
   } else if (prev === '출석' && val !== '출석') {
-    // 출석 취소: 회차 감소 없음, 스냅샷만 0으로
-    cell.snapshotSession = 0;
-    // 알람도 유지 (실수로 취소해도 알람 안 꺼짐)
+    // 출석 취소: 회차 감소 없음, snapshotSession은 유지 (재선택 시 중복 방지용)
   }
 
   saveLessons();
