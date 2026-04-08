@@ -574,6 +574,12 @@ let lessons     = load('tc_lessons',  {});
 let consultData = load('tc_consult',  []);
 let receipts    = load('tc_receipts', {});
 let memos       = load('tc_memos', {});  // { studentId: '메모내용' }
+let customSchools = load('tc_schools', []);  // 사용자 추가 학교
+const DEFAULT_SCHOOLS = ['한림고','제일고','신성여고','중앙여고','사대부고','중앙고','남녕고','애월고','중앙중','신엄중','서중','귀일중','백록초','구엄초'];
+function getAllSchools() {
+  return [...new Set([...DEFAULT_SCHOOLS, ...customSchools])].sort();
+}
+function saveCustomSchools() { save('tc_schools', customSchools); }
 // 누적 수업 회차: { 'studentId_className': totalCount }
 let sessionTotals = load('tc_sessions', {});
 // 결제 미완료 알람: { 'studentId_className': true } — 수동으로만 해제
@@ -1258,9 +1264,19 @@ function openAddStudentModal(){document.getElementById('modalTitle').textContent
 function openEditStudentModal(id){const s=students.find(s=>s.id===id);if(!s)return;document.getElementById('modalTitle').textContent='학생 정보 수정';document.getElementById('modalBody').innerHTML=studentForm(s);document.getElementById('modalOverlay').classList.add('open');}
 function studentForm(s){
   const today = new Date().toISOString().slice(0,10);
+  const schools = getAllSchools();
   return`<div class="form-grid">
     <div class="form-group"><label>이름 *</label><input class="form-input" id="f_name" value="${s?.name||''}" placeholder="학생 이름"></div>
-    <div class="form-group"><label>학교</label><input class="form-input" id="f_school" value="${s?.school||''}" placeholder="예) 한국중학교"></div>
+    <div class="form-group">
+      <label>학교</label>
+      <div style="display:flex;gap:6px">
+        <select class="form-input" id="f_school" style="flex:1">
+          <option value="">선택</option>
+          ${schools.map(sch=>`<option value="${sch}" ${s?.school===sch?'selected':''}>${sch}</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-sm btn-outline" onclick="addSchoolPrompt()" style="white-space:nowrap">+ 추가</button>
+      </div>
+    </div>
     <div class="form-group"><label>학년</label>
       <select class="form-input" id="f_grade">
         <option value="">선택</option>
@@ -1288,7 +1304,7 @@ function studentForm(s){
 function saveStudent(eid){
   const name=document.getElementById('f_name').value.trim();
   if(!name){alert('이름을 입력해 주세요!');return;}
-  const cls=document.querySelector('input[name="cls_radio"]:checked')?.value||'';
+  const cls=document.getElementById('f_cls')?.value||'';
   if(!cls){alert('배정 반을 선택해 주세요!');return;}
   const obj={name,school:document.getElementById('f_school').value.trim(),grade:document.getElementById('f_grade').value,contact:document.getElementById('f_contact').value.trim(),textbook:document.getElementById('f_textbook').value.trim(),cls,enrollDate:document.getElementById('f_enrollDate')?.value||new Date().toISOString().slice(0,10)};
   let finalObj;
@@ -1594,6 +1610,28 @@ function saveMemo(sid, val) {
   saveMemos();
 }
 
+
+// ── 학교 추가 ──
+function addSchoolPrompt() {
+  const name = prompt('추가할 학교 이름을 입력하세요:');
+  if(!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if(getAllSchools().includes(trimmed)) {
+    alert('이미 있는 학교예요!');
+    return;
+  }
+  customSchools.push(trimmed);
+  saveCustomSchools();
+  // 현재 폼 다시 렌더링 (모달 유지하면서 select만 업데이트)
+  const select = document.getElementById('f_school');
+  if(select) {
+    const schools = getAllSchools();
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">선택</option>' +
+      schools.map(sch=>`<option value="${sch}" ${sch===trimmed?'selected':''}>${sch}</option>`).join('');
+    select.value = trimmed;
+  }
+}
 
 // Mobile sidebar toggle
 function toggleMobileSidebar() {
