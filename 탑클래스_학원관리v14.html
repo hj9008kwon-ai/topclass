@@ -1713,24 +1713,21 @@ function generatePaymentMsg(student, cls) {
   const fee = cfg?.fee || 0;
   const total = getTotal(student.id, cls);
 
-  // 현재 누적 회차에서 직전 주기의 출석 날짜만 수집
-  // 예: total=16, limit=8 → 9~16번째 출석 날짜
-  const attendedDates = [];
+  // 가장 최근 완료된 주기의 마지막 회차 계산
+  // 예: total=9, limit=8 → 완료된 주기는 1~8, 새 주기는 9
+  // 예: total=16, limit=8 → 완료된 주기는 9~16
+  const completedCycleEnd = Math.floor(total / limit) * limit;
+  const completedCycleStart = completedCycleEnd - limit + 1;
+
+  // snapshotSession 기준으로 완료된 주기 날짜만 수집
   const allDates = Object.keys(lessons).sort();
+  const recentDates = [];
   for(const ds of allDates) {
     const cell = lessons[ds]?.[cls]?.[student.id];
-    if(cell && cell.attendance === '출석' && cell.snapshotSession > 0) {
-      attendedDates.push({ ds, snap: cell.snapshotSession });
+    if(cell && cell.attendance === '출석' && cell.snapshotSession >= completedCycleStart && cell.snapshotSession <= completedCycleEnd) {
+      recentDates.push(ds);
     }
   }
-  // snapshotSession 기준으로 현재 주기(마지막 limit개) 필터링
-  // 현재 주기 = total - limit + 1 ~ total 범위의 snapshotSession
-  const cycleStart = total - limit + 1;
-  const cycleEnd = total;
-  const recentDates = attendedDates
-    .filter(x => x.snap >= cycleStart && x.snap <= cycleEnd)
-    .sort((a,b) => a.ds.localeCompare(b.ds))
-    .map(x => x.ds);
   const dateStr = recentDates.map(ds => {
     const [y,m,d] = ds.split('-');
     return `${+m}/${+d}`;
