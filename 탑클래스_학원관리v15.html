@@ -539,7 +539,6 @@ async function confirmAndSendSMS(sid, cls, type) {
   const result = await sendSolapiSMS(s.contact, text);
   const btn = document.getElementById('sendSmsBtn');
   if (result.success) {
-    logSMS(s.id, '결제 안내');
     closeModalDirect();
     showSyncStatus(`✅ ${s.name} 학부모께 문자 발송 완료!`, '#1e7a4a');
   } else {
@@ -569,7 +568,7 @@ async function sendAllPaymentSMS() {
   for (const { s, cls } of targets) {
     const msg = generatePaymentMsg(s, cls);
     const result = await sendSolapiSMS(s.contact, msg);
-    if (result.success) { ok++; logSMS(s.id, '공지'); }
+    if (result.success) ok++;
     else fail++;
     await new Promise(r => setTimeout(r, 300)); // 0.3초 간격
   }
@@ -637,7 +636,7 @@ async function doBroadcastSMS() {
   let ok = 0, fail = 0;
   for (const s of targets) {
     const result = await sendSolapiSMS(s.contact, text);
-    if (result.success) { ok++; logSMS(s.id, '공지'); }
+    if (result.success) ok++;
     else fail++;
     await new Promise(r => setTimeout(r, 300));
   }
@@ -1029,7 +1028,7 @@ function renderClassView() {
             <td><span class="drag-handle">⠿</span></td>
             <td><strong style="color:var(--accent2)">${i+1}</strong></td>
             <td style="text-align:left;white-space:nowrap">
-              <button class="name-btn" onclick="openHistory('${s.id}')">${s.name}</button>
+              <button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button>
               <div style="font-size:10px;color:#888;margin-top:1px">${s.school||''}${s.grade?' · '+s.grade:''}</div>
             </td>
             <td><input class="editable" value="${cell.progress}" placeholder="진도"
@@ -1093,7 +1092,7 @@ function renderClassViewMobile(ds, cfg, cs, main) {
           <div class="slc-header">
             <div>
               <div class="slc-name">
-                <button class="name-btn" onclick="openHistory('${s.id}')">${s.name}</button>
+                <button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button>
               </div>
               <div class="slc-meta">${s.school||''}${s.grade?' · '+s.grade:''}</div>
             </div>
@@ -1363,6 +1362,15 @@ function getLastLessonDate(sid, cls) {
   return dates[0] || null;
 }
 
+function fmtEnrollDate(d) {
+  if(!d) return '-';
+  const dt = new Date(d);
+  if(isNaN(dt)) return '-';
+  const yy = String(dt.getFullYear()).slice(2);
+  const mm = String(dt.getMonth()+1).padStart(2,'0');
+  const dd = String(dt.getDate()).padStart(2,'0');
+  return yy+'년 '+mm+'월 '+dd+'일';
+}
 function calcDuration(enrollDate) {
   if(!enrollDate) return '-';
   const start = new Date(enrollDate);
@@ -1391,7 +1399,7 @@ function renderStudentTable(list) {
     const alarm = !!payAlarms[sessionKey(s.id,s.cls)];
     return `<tr>
       <td style="color:#aaa;text-align:center">${i+1}</td>
-      <td><button class="name-btn" onclick="openHistory('${s.id}')">${s.name}</button></td>
+      <td><button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button></td>
       <td>${s.school||'-'}</td>
       <td>${s.grade||'-'}</td>
       <td>${s.contact||'-'}</td>
@@ -1400,7 +1408,7 @@ function renderStudentTable(list) {
       </td>
       <td>${s.textbook||'-'}</td>
       <td><span class="tag" style="background:${cfg?.color||'#888'};color:#fff">${cfg?.icon||''} ${s.cls||'-'}</span></td>
-      <td style="color:#888;font-size:11px">${s.enrollDate||'-'}</td>
+      <td style="color:#888;font-size:11px">${fmtEnrollDate(s.enrollDate)}</td>
       <td style="color:#888;font-size:11px">${duration}</td>
       <td style="text-align:center"><span style="font-weight:700;color:${alarm?'var(--accent)':'var(--accent2)'}">${total>0?display+'/'+limit:'-'}</span>${alarm?' 🚩':''}</td>
       <td style="color:#888;font-size:11px">${lastStr}</td>
@@ -1943,7 +1951,6 @@ async function confirmAndSendSMSTA(sid) {
   const result = await sendSolapiSMS(s.contact, text);
   const btn = document.getElementById('sendSmsBtn');
   if (result.success) {
-    logSMS(s.id, '결제 안내');
     closeModalDirect();
     showSyncStatus(`✅ ${s.name} 학부모께 문자 발송 완료!`, '#1e7a4a');
   } else {
@@ -2071,6 +2078,9 @@ function setMobileNav(v) {
   if(el) el.classList.add('active');
 }
 
+// Override setView to also update mobile nav
+const _origSetView = setView;
+// patch setView to update mobile nav too — done inline
 
 window.addEventListener('resize', () => {
   if(currentView==='class') renderClassView();
@@ -2082,31 +2092,6 @@ renderClassChips();
 renderHome();
 setMobileNav('calendar');
 // 앱 시작 시 클라우드에서 자동 동기화 (로딩 화면 표시)
-
-// ── 문자 발송 이력 ──
-let smsLog = load('tc_smslog', {});
-function logSMS(sid, type) {
-  if (!smsLog[sid]) smsLog[sid] = [];
-  smsLog[sid].push({ type, date: new Date().toLocaleDateString('ko-KR') });
-  save('tc_smslog', smsLog);
-}
-function getSmsCount(sid, type) {
-  if (!smsLog[sid]) return 0;
-  return type ? smsLog[sid].filter(x => x.type === type).length : smsLog[sid].length;
-}
-function getLastSmsTypes(sid) {
-  if (!smsLog[sid] || !smsLog[sid].length) return [];
-  return smsLog[sid].slice(-5).reverse();
-}
-function toggleContactSection(id) {
-  const el = document.getElementById(id);
-  const arrow = document.getElementById('arrow_' + id.replace('section_',''));
-  if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'block';
-  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
-}
-
 syncFromCloud(true);
 </script>
 </body>
