@@ -1019,9 +1019,6 @@ function setMobileNav(v) {
   if(el) el.classList.add('active');
 }
 
-// Override setView to also update mobile nav
-const _origSetView = setView;
-// patch setView to update mobile nav too — done inline
 
 window.addEventListener('resize', () => {
   if(currentView==='class') renderClassView();
