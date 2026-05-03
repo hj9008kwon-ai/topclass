@@ -650,7 +650,7 @@ async function doBroadcastSMS() {
 // ═══════════════════════════════════════
 // GOOGLE APPS SCRIPT 연동
 // ═══════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby7OWtyc2JX4qLrpPObkd5tW4KSvszNNDIf9-cqmDmPGV8lYNxY_DAICDBZqptutaHX4g/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwTF74-LKy--HNHkM5MKuzsAuqjQvf4yUjkVPt5ezESZAzbNhmuLg7xP2-5r-j25AAirw/exec';
 
 async function apiGet(params) {
   const url = SCRIPT_URL + '?' + new URLSearchParams(params);
@@ -807,6 +807,16 @@ function saveStudents()     { save('tc_students', students); }
 function saveLessons()      { save('tc_lessons',  lessons);  }
 function saveConsult()      { save('tc_consult',  consultData); }
 function saveReceipts()     { save('tc_receipts', receipts); }
+let smsLog = load('tc_smslog', {}); // { studentId: [{type, date}] }
+function logSMS(sid, type) {
+  if (!smsLog[sid]) smsLog[sid] = [];
+  smsLog[sid].push({ type, date: new Date().toLocaleDateString('ko-KR') });
+  save('tc_smslog', smsLog);
+}
+function getSmsCount(sid, type) {
+  if (!smsLog[sid]) return 0;
+  return type ? smsLog[sid].filter(x => x.type === type).length : smsLog[sid].length;
+}
 function getLastSmsTypes(sid) {
   if (!smsLog[sid] || !smsLog[sid].length) return [];
   // 최근 5개 발송 유형 목록
@@ -814,6 +824,219 @@ function getLastSmsTypes(sid) {
 }
 
 // ── 문자 발송 탭 ──
+function renderSmsTab() {
+  const from = getSolapiFrom();
+  const totalAlarm = Object.values(payAlarms).filter(Boolean).length;
+  const sendableAlarm = Object.entries(payAlarms).filter(([k,v]) => {
+    if (!v) return false;
+    const [sid] = k.split('__');
+    const s = students.find(s => s.id === sid);
+    return s && s.contact;
+  }).length;
+
+  const MSG_TYPES = ['결제 안내','입회 시험 결과','학교 시험 결과','월간 보고','교재 및 준비물 안내','휴강 안내','기타'];
+
+  const contactRows = CLASS_NAMES.map(c => {
+    const cs = students.filter(s => s.cls === c);
+    if (!cs.length) return '';
+    const withContact = cs.filter(s => s.contact).length;
+
+    const rows = cs.map(s => {
+      const hasAlarm = !!payAlarms[sessionKey(s.id, c)];
+      const totalSent = getSmsCount(s.id, null);
+      const recentLogs = getLastSmsTypes(s.id);
+      const logHtml = recentLogs.length
+        ? recentLogs.map(l => `<span style="font-size:10px;background:#f0f4ff;border:1px solid #c8d8f0;border-radius:3px;padding:1px 5px;margin:1px">${l.type} (${l.date})</span>`).join('')
+        : '<span style="font-size:11px;color:#bbb">없음</span>';
+
+      return `<tr>
+        <td style="padding:7px 10px;font-weight:600">${s.name}</td>
+        <td style="padding:7px 10px;color:${s.contact?'var(--text)':'#ccc'}">${s.contact||'미등록'}</td>
+        <td style="padding:7px 10px;text-align:center">
+          ${hasAlarm ? '<span style="color:var(--accent);font-weight:700">⚠️ 필요</span>' : '<span style="color:var(--green)">✅ 없음</span>'}
+        </td>
+        <td style="padding:7px 10px">
+          <div style="display:flex;flex-wrap:wrap;gap:3px">${logHtml}</div>
+        </td>
+        <td style="padding:7px 10px;text-align:center;font-weight:700;color:var(--accent2)">${totalSent}건</td>
+        <td style="padding:7px 10px;text-align:center">
+          ${s.contact ? `<button class="btn btn-sm" style="background:var(--accent2);color:#fff;white-space:nowrap;font-size:11px" onclick="openMsgMenu('${s.id}')">📱 문자</button>` : '<span style="color:#ccc;font-size:11px">연락처 없음</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `
+      <div class="dash-card" style="margin-bottom:10px;padding:0;overflow:hidden">
+        <div onclick="toggleContactSection('section_${c.replace(/\s/g,'_')}')"
+          style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--cream)">
+          <span style="font-weight:700">${CLASS_CONFIG[c].icon} ${c}</span>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;color:${withContact===cs.length?'var(--green)':'var(--accent)'};font-weight:600">연락처 ${withContact}/${cs.length}명</span>
+            <span id="arrow_${c.replace(/\s/g,'_')}">▼</span>
+          </div>
+        </div>
+        <div id="section_${c.replace(/\s/g,'_')}" style="display:none;overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="background:#f5f5f0;border-bottom:1.5px solid var(--border)">
+                <th style="padding:7px 10px;text-align:left;font-weight:700">이름</th>
+                <th style="padding:7px 10px;text-align:left;font-weight:700">연락처</th>
+                <th style="padding:7px 10px;text-align:center;font-weight:700">결제 필요</th>
+                <th style="padding:7px 10px;text-align:left;font-weight:700">최근 발송 이력</th>
+                <th style="padding:7px 10px;text-align:center;font-weight:700">총 발송</th>
+                <th style="padding:7px 10px;text-align:center;font-weight:700">문자</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="dashboard-grid" style="margin-bottom:16px">
+      <div class="dash-card">
+        <h3>⚙️ 발신번호 설정</h3>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <input id="solapiFromInput" class="form-input" style="flex:1" placeholder="01012345678" value="${from}">
+          <button class="btn btn-primary" onclick="saveSolapiFrom()">저장</button>
+        </div>
+        <div style="font-size:11px;color:#888;margin-top:6px">솔라피에 등록된 발신번호를 입력하세요</div>
+      </div>
+      <div class="dash-card">
+        <h3>💳 솔라피 잔액</h3>
+        <div id="solapiBalance" style="font-size:20px;font-weight:900;color:var(--accent2);margin:8px 0">-</div>
+        <button class="btn btn-outline btn-sm" onclick="checkSolapiBalance()">잔액 조회</button>
+        <div style="font-size:10px;color:#aaa;margin-top:6px">* 솔라피 서버 실시간 잔액이에요</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+      <button class="btn btn-success" onclick="openBroadcastModal()">📢 공지 문자 일괄 발송</button>
+      <button class="btn" style="background:var(--accent);color:#fff" onclick="sendAllPaymentSMS()">
+        🚩 결제알람 일괄 발송 (전체 ${totalAlarm}명 / 발송가능 ${sendableAlarm}명)
+      </button>
+    </div>
+    <h3 style="margin-bottom:10px">👥 학부모 연락처 현황</h3>
+    ${contactRows}`;
+}
+
+function toggleContactSection(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow_' + id.replace('section_',''));
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+function saveSolapiFrom() {
+  const val = document.getElementById('solapiFromInput').value.trim();
+  setSolapiFrom(val);
+  showSyncStatus('✅ 발신번호 저장됨', '#1e7a4a');
+}
+
+async function checkSolapiBalance() {
+  const date = new Date().toISOString();
+  const { salt, signature } = await makeSignature(SOLAPI_CONFIG.apiSecret, date);
+  const authorization = `HMAC-SHA256 apiKey=${SOLAPI_CONFIG.apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
+  try {
+    const res = await fetch('https://api.solapi.com/cash/v1/balance', {
+      headers: { 'Authorization': authorization }
+    });
+    const data = await res.json();
+    const el = document.getElementById('solapiBalance');
+    if (el && data.balance !== undefined) {
+      el.textContent = Number(data.balance).toLocaleString() + '원';
+    } else if (el) {
+      el.textContent = JSON.stringify(data);
+    }
+  } catch(e) {
+    showSyncStatus('잔액 조회 실패: ' + e.message, '#c8401a');
+  }
+}
+
+// ── 결제 메시지 버튼 in class view alarm cell ──
+// Override confirmPayment to also show message
+function confirmPayment(sid, cls) {
+  if (!confirm('결제를 확인하셨나요? 결제 알람이 해제됩니다.')) return;
+  delete payAlarms[sessionKey(sid, cls)];
+  savePayAlarms();
+  cloudSaveSession(sid, cls);
+  renderClassView();
+}
+
+// ── 메모 기능 ──
+function saveMemo(sid, val) {
+  memos[sid] = val;
+  saveMemos();
+}
+
+
+function toggleContactSection(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow_' + id.replace('section_',''));
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+
+// ── 학교 추가 ──
+function addSchoolPrompt() {
+  const name = prompt('추가할 학교 이름을 입력하세요:');
+  if(!name || !name.trim()) return;
+  const trimmed = name.trim();
+  if(getAllSchools().includes(trimmed)) {
+    alert('이미 있는 학교예요!');
+    return;
+  }
+  customSchools.push(trimmed);
+  saveCustomSchools();
+  // 현재 폼 다시 렌더링 (모달 유지하면서 select만 업데이트)
+  const select = document.getElementById('f_school');
+  if(select) {
+    const schools = getAllSchools();
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">선택</option>' +
+      schools.map(sch=>`<option value="${sch}" ${sch===trimmed?'selected':''}>${sch}</option>`).join('');
+    select.value = trimmed;
+  }
+}
+
+// Mobile sidebar toggle
+function toggleMobileSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('open');
+  const btn = document.getElementById('calToggleBtn');
+  btn.textContent = sidebar.classList.contains('open') ? '📅 캘린더 닫기' : '📅 캘린더 열기';
+}
+
+// Mobile bottom nav active state
+function setMobileNav(v) {
+  document.querySelectorAll('.mobile-bottom-nav button').forEach(b=>b.classList.remove('active'));
+  const el = document.getElementById('mbn_'+v);
+  if(el) el.classList.add('active');
+}
+
+// Override setView to also update mobile nav
+const _origSetView = setView;
+// patch setView to update mobile nav too — done inline
+
+window.addEventListener('resize', () => {
+  if(currentView==='class') renderClassView();
+});
+
+// INIT
+renderCalendar();
+renderClassChips();
+renderHome();
+setMobileNav('calendar');
+// 앱 시작 시 클라우드에서 자동 동기화 (로딩 화면 표시)
+syncFromCloud(true);
+</script>
+</body>
+</html>
 function saveSessionTotals(){ save('tc_sessions', sessionTotals); }
 function savePayAlarms()    { save('tc_payalarms', payAlarms); }
 
@@ -1967,207 +2190,4 @@ async function confirmAndSendSMSTA(sid, type) {
 }
 
 // ── 문자 발송 이력 ──
-let smsLog = load('tc_smslog', {}); // { studentId: [{type, date}] }
-function renderSmsTab() {
-  const from = getSolapiFrom();
-  const totalAlarm = Object.values(payAlarms).filter(Boolean).length;
-  const sendableAlarm = Object.entries(payAlarms).filter(([k,v]) => {
-    if (!v) return false;
-    const [sid] = k.split('__');
-    const s = students.find(s => s.id === sid);
-    return s && s.contact;
-  }).length;
 
-  const MSG_TYPES = ['결제 안내','입회 시험 결과','학교 시험 결과','월간 보고','교재 및 준비물 안내','휴강 안내','기타'];
-
-  const contactRows = CLASS_NAMES.map(c => {
-    const cs = students.filter(s => s.cls === c);
-    if (!cs.length) return '';
-    const withContact = cs.filter(s => s.contact).length;
-
-    const rows = cs.map(s => {
-      const hasAlarm = !!payAlarms[sessionKey(s.id, c)];
-      const totalSent = getSmsCount(s.id, null);
-      const recentLogs = getLastSmsTypes(s.id);
-      const logHtml = recentLogs.length
-        ? recentLogs.map(l => `<span style="font-size:10px;background:#f0f4ff;border:1px solid #c8d8f0;border-radius:3px;padding:1px 5px;margin:1px">${l.type} (${l.date})</span>`).join('')
-        : '<span style="font-size:11px;color:#bbb">없음</span>';
-
-      return `<tr>
-        <td style="padding:7px 10px;font-weight:600">${s.name}</td>
-        <td style="padding:7px 10px;color:${s.contact?'var(--text)':'#ccc'}">${s.contact||'미등록'}</td>
-        <td style="padding:7px 10px;text-align:center">
-          ${hasAlarm ? '<span style="color:var(--accent);font-weight:700">⚠️ 필요</span>' : '<span style="color:var(--green)">✅ 없음</span>'}
-        </td>
-        <td style="padding:7px 10px">
-          <div style="display:flex;flex-wrap:wrap;gap:3px">${logHtml}</div>
-        </td>
-        <td style="padding:7px 10px;text-align:center;font-weight:700;color:var(--accent2)">${totalSent}건</td>
-        <td style="padding:7px 10px;text-align:center">
-          ${s.contact ? `<button class="btn btn-sm" style="background:var(--accent2);color:#fff;white-space:nowrap;font-size:11px" onclick="openMsgMenu('${s.id}')">📱 문자</button>` : '<span style="color:#ccc;font-size:11px">연락처 없음</span>'}
-        </td>
-      </tr>`;
-    }).join('');
-
-    return `
-      <div class="dash-card" style="margin-bottom:10px;padding:0;overflow:hidden">
-        <div onclick="toggleContactSection('section_${c.replace(/\s/g,'_')}')"
-          style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;background:var(--cream)">
-          <span style="font-weight:700">${CLASS_CONFIG[c].icon} ${c}</span>
-          <div style="display:flex;align-items:center;gap:10px">
-            <span style="font-size:12px;color:${withContact===cs.length?'var(--green)':'var(--accent)'};font-weight:600">연락처 ${withContact}/${cs.length}명</span>
-            <span id="arrow_${c.replace(/\s/g,'_')}">▼</span>
-          </div>
-        </div>
-        <div id="section_${c.replace(/\s/g,'_')}" style="display:none;overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead>
-              <tr style="background:#f5f5f0;border-bottom:1.5px solid var(--border)">
-                <th style="padding:7px 10px;text-align:left;font-weight:700">이름</th>
-                <th style="padding:7px 10px;text-align:left;font-weight:700">연락처</th>
-                <th style="padding:7px 10px;text-align:center;font-weight:700">결제 필요</th>
-                <th style="padding:7px 10px;text-align:left;font-weight:700">최근 발송 이력</th>
-                <th style="padding:7px 10px;text-align:center;font-weight:700">총 발송</th>
-                <th style="padding:7px 10px;text-align:center;font-weight:700">문자</th>
-              </tr>
-            </thead>
-            <tbody>${rows}</tbody>
-          </table>
-        </div>
-      </div>`;
-  }).join('');
-
-  return `
-    <div class="dashboard-grid" style="margin-bottom:16px">
-      <div class="dash-card">
-        <h3>⚙️ 발신번호 설정</h3>
-        <div style="display:flex;gap:8px;margin-top:8px">
-          <input id="solapiFromInput" class="form-input" style="flex:1" placeholder="01012345678" value="${from}">
-          <button class="btn btn-primary" onclick="saveSolapiFrom()">저장</button>
-        </div>
-        <div style="font-size:11px;color:#888;margin-top:6px">솔라피에 등록된 발신번호를 입력하세요</div>
-      </div>
-      <div class="dash-card">
-        <h3>💳 솔라피 잔액</h3>
-        <div id="solapiBalance" style="font-size:20px;font-weight:900;color:var(--accent2);margin:8px 0">-</div>
-        <button class="btn btn-outline btn-sm" onclick="checkSolapiBalance()">잔액 조회</button>
-        <div style="font-size:10px;color:#aaa;margin-top:6px">* 솔라피 서버 실시간 잔액이에요</div>
-      </div>
-    </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
-      <button class="btn btn-success" onclick="openBroadcastModal()">📢 공지 문자 일괄 발송</button>
-      <button class="btn" style="background:var(--accent);color:#fff" onclick="sendAllPaymentSMS()">
-        🚩 결제알람 일괄 발송 (전체 ${totalAlarm}명 / 발송가능 ${sendableAlarm}명)
-      </button>
-    </div>
-    <h3 style="margin-bottom:10px">👥 학부모 연락처 현황</h3>
-    ${contactRows}`;
-}
-
-function saveSolapiFrom() {
-  const val = document.getElementById('solapiFromInput').value.trim();
-  setSolapiFrom(val);
-  showSyncStatus('✅ 발신번호 저장됨', '#1e7a4a');
-}
-
-async function checkSolapiBalance() {
-  const date = new Date().toISOString();
-  const { salt, signature } = await makeSignature(SOLAPI_CONFIG.apiSecret, date);
-  const authorization = `HMAC-SHA256 apiKey=${SOLAPI_CONFIG.apiKey}, date=${date}, salt=${salt}, signature=${signature}`;
-  try {
-    const res = await fetch('https://api.solapi.com/cash/v1/balance', {
-      headers: { 'Authorization': authorization }
-    });
-    const data = await res.json();
-    const el = document.getElementById('solapiBalance');
-    if (el && data.balance !== undefined) {
-      el.textContent = Number(data.balance).toLocaleString() + '원';
-    } else if (el) {
-      el.textContent = JSON.stringify(data);
-    }
-  } catch(e) {
-    showSyncStatus('잔액 조회 실패: ' + e.message, '#c8401a');
-  }
-}
-
-// ── 결제 메시지 버튼 in class view alarm cell ──
-// Override confirmPayment to also show message
-function confirmPayment(sid, cls) {
-  if (!confirm('결제를 확인하셨나요? 결제 알람이 해제됩니다.')) return;
-  delete payAlarms[sessionKey(sid, cls)];
-  savePayAlarms();
-  cloudSaveSession(sid, cls);
-  renderClassView();
-}
-
-// ── 메모 기능 ──
-function saveMemo(sid, val) {
-  memos[sid] = val;
-  saveMemos();
-}
-
-
-// ── 학교 추가 ──
-function toggleContactSection(id) {
-  const el = document.getElementById(id);
-  const arrow = document.getElementById('arrow_' + id.replace('section_',''));
-  if (!el) return;
-  const isOpen = el.style.display !== 'none';
-  el.style.display = isOpen ? 'none' : 'block';
-  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
-}
-
-function addSchoolPrompt() {
-  const name = prompt('추가할 학교 이름을 입력하세요:');
-  if(!name || !name.trim()) return;
-  const trimmed = name.trim();
-  if(getAllSchools().includes(trimmed)) {
-    alert('이미 있는 학교예요!');
-    return;
-  }
-  customSchools.push(trimmed);
-  saveCustomSchools();
-  // 현재 폼 다시 렌더링 (모달 유지하면서 select만 업데이트)
-  const select = document.getElementById('f_school');
-  if(select) {
-    const schools = getAllSchools();
-    const currentVal = select.value;
-    select.innerHTML = '<option value="">선택</option>' +
-      schools.map(sch=>`<option value="${sch}" ${sch===trimmed?'selected':''}>${sch}</option>`).join('');
-    select.value = trimmed;
-  }
-}
-
-// Mobile sidebar toggle
-function toggleMobileSidebar() {
-  const sidebar = document.querySelector('.sidebar');
-  sidebar.classList.toggle('open');
-  const btn = document.getElementById('calToggleBtn');
-  btn.textContent = sidebar.classList.contains('open') ? '📅 캘린더 닫기' : '📅 캘린더 열기';
-}
-
-// Mobile bottom nav active state
-function setMobileNav(v) {
-  document.querySelectorAll('.mobile-bottom-nav button').forEach(b=>b.classList.remove('active'));
-  const el = document.getElementById('mbn_'+v);
-  if(el) el.classList.add('active');
-}
-
-// Override setView to also update mobile nav
-const _origSetView = setView;
-// patch setView to update mobile nav too — done inline
-
-window.addEventListener('resize', () => {
-  if(currentView==='class') renderClassView();
-});
-
-// INIT
-renderCalendar();
-renderClassChips();
-renderHome();
-setMobileNav('calendar');
-// 앱 시작 시 클라우드에서 자동 동기화 (로딩 화면 표시)
-syncFromCloud(true);
-</script>
-</body>
-</html>
