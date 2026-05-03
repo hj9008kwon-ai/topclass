@@ -539,6 +539,7 @@ async function confirmAndSendSMS(sid, cls, type) {
   const result = await sendSolapiSMS(s.contact, text);
   const btn = document.getElementById('sendSmsBtn');
   if (result.success) {
+    logSMS(sid, '결제 안내');
     closeModalDirect();
     showSyncStatus(`✅ ${s.name} 학부모께 문자 발송 완료!`, '#1e7a4a');
   } else {
@@ -554,25 +555,28 @@ async function sendAllPaymentSMS() {
     if (!val) continue;
     const [sid, cls] = key.split('__');
     const s = students.find(s => s.id === sid);
-    if (s && s.contact) alarmStudents.push({ s, cls });
+    if (s) alarmStudents.push({ s, cls });
   }
   if (!alarmStudents.length) { alert('결제 알람 학생이 없어요!'); return; }
 
   const noContact = alarmStudents.filter(x => !x.s.contact).map(x => x.s.name);
-  if (noContact.length) alert(`연락처 없는 학생 (발송 제외): ${noContact.join(', ')}`);
-
   const targets = alarmStudents.filter(x => x.s.contact);
-  if (!confirm(`${targets.length}명에게 결제 안내 문자를 발송할까요?\n${targets.map(x=>x.s.name).join(', ')}`)) return;
+
+  let msg = `${targets.length}명에게 결제 안내 문자를 발송할까요?\n📞 ${targets.map(x=>x.s.name).join(', ')}`;
+  if (noContact.length) msg += `\n\n⚠️ 연락처 없어 발송 불가 (${noContact.length}명): ${noContact.join(', ')}`;
+  if (!targets.length) { alert('연락처 등록된 학생이 없어요!'); return; }
+  if (!confirm(msg)) return;
 
   let ok = 0, fail = 0;
   for (const { s, cls } of targets) {
-    const msg = generatePaymentMsg(s, cls);
-    const result = await sendSolapiSMS(s.contact, msg);
-    if (result.success) ok++;
+    const text = generatePaymentMsg(s, cls);
+    const result = await sendSolapiSMS(s.contact, text);
+    if (result.success) { ok++; logSMS(s.id, '결제 안내'); }
     else fail++;
-    await new Promise(r => setTimeout(r, 300)); // 0.3초 간격
+    await new Promise(r => setTimeout(r, 300));
   }
   showSyncStatus(`✅ ${ok}명 발송 완료${fail > 0 ? ` / ❌ ${fail}명 실패` : ''}`, ok > 0 ? '#1e7a4a' : '#c8401a');
+  showDashTab('sms', document.querySelector('.tab-btn.active'));
 }
 
 // 개별 공지 문자 발송 모달
@@ -636,7 +640,7 @@ async function doBroadcastSMS() {
   let ok = 0, fail = 0;
   for (const s of targets) {
     const result = await sendSolapiSMS(s.contact, text);
-    if (result.success) ok++;
+    if (result.success) { ok++; logSMS(s.id, '공지'); }
     else fail++;
     await new Promise(r => setTimeout(r, 300));
   }
@@ -817,6 +821,13 @@ function getLastSms(sid) {
   if (!smsLog[sid] || !smsLog[sid].length) return null;
   return smsLog[sid][smsLog[sid].length - 1];
 }
+function getLastSmsTypes(sid) {
+  if (!smsLog[sid] || !smsLog[sid].length) return [];
+  // 최근 5개 발송 유형 목록
+  return [...smsLog[sid]].reverse().slice(0, 5);
+}
+
+// ── 문자 발송 탭 ──
 function saveSessionTotals(){ save('tc_sessions', sessionTotals); }
 function savePayAlarms()    { save('tc_payalarms', payAlarms); }
 
@@ -1947,15 +1958,20 @@ function openMsgEditor(sid, type) {
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-async function confirmAndSendSMSTA(sid) {
+async function confirmAndSendSMSTA(sid, type) {
   const s = students.find(s => s.id === sid);
   if (!s) return;
+  const typeLabels = {
+    payment:'결제 안내', entrance:'입회 시험 결과', exam:'학교 시험 결과',
+    monthly:'월간 보고', material:'교재 및 준비물 안내', holiday:'휴강 안내', custom:'기타'
+  };
   const box = document.getElementById('smsPreviewBox');
   const text = box ? box.value.trim() : '';
   if (!text) { alert('메시지 내용이 비어있어요!'); return; }
   const result = await sendSolapiSMS(s.contact, text);
   const btn = document.getElementById('sendSmsBtn');
   if (result.success) {
+    logSMS(sid, typeLabels[type] || '기타');
     closeModalDirect();
     showSyncStatus(`✅ ${s.name} 학부모께 문자 발송 완료!`, '#1e7a4a');
   } else {
@@ -1964,7 +1980,8 @@ async function confirmAndSendSMSTA(sid) {
   }
 }
 
-// ── 문자 발송 탭 ──
+// ── 문자 발송 이력 ──
+let smsLog = load('tc_smslog', {}); // { studentId: [{type, date}] }
 function renderSmsTab() {
   const from = getSolapiFrom();
   const totalAlarm = Object.values(payAlarms).filter(Boolean).length;
@@ -2105,6 +2122,15 @@ function saveMemo(sid, val) {
 
 
 // ── 학교 추가 ──
+function toggleContactSection(id) {
+  const el = document.getElementById(id);
+  const arrow = document.getElementById('arrow_' + id.replace('section_',''));
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+  if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
+}
+
 function addSchoolPrompt() {
   const name = prompt('추가할 학교 이름을 입력하세요:');
   if(!name || !name.trim()) return;
