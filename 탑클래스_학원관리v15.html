@@ -637,7 +637,7 @@ async function doBroadcastSMS() {
   let ok = 0, fail = 0;
   for (const s of targets) {
     const result = await sendSolapiSMS(s.contact, text);
-    if (result.success) ok++;
+    if (result.success) { ok++; logSMS(s.id, '공지'); }
     else fail++;
     await new Promise(r => setTimeout(r, 300));
   }
@@ -2076,6 +2076,12 @@ window.addEventListener('resize', () => {
   if(currentView==='class') renderClassView();
 });
 
+// INIT
+renderCalendar();
+renderClassChips();
+renderHome();
+setMobileNav('calendar');
+// 앱 시작 시 클라우드에서 자동 동기화 (로딩 화면 표시)
 
 // ── 문자 발송 이력 ──
 let smsLog = load('tc_smslog', {});
@@ -2101,12 +2107,6 @@ function toggleContactSection(id) {
   if (arrow) arrow.textContent = isOpen ? '▼' : '▲';
 }
 
-// INIT
-renderCalendar();
-renderClassChips();
-renderHome();
-setMobileNav('calendar');
-// 앱 시작 시 클라우드에서 자동 동기화 (로딩 화면 표시)
 syncFromCloud(true);
 </script>
 </body>
