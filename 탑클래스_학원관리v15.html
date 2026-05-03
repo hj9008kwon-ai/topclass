@@ -344,9 +344,9 @@
   /* ── Student Table View ── */
   .student-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1.5px solid var(--border); box-shadow: 0 2px 8px var(--shadow); margin-bottom: 16px; }
   .student-table { width: 100%; border-collapse: collapse; min-width: 1050px; }
-  .student-table th { background: var(--ink); color: #fff; padding: 10px 12px; font-size: 11px; font-weight: 700; text-align: left; border-right: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
+  .student-table th { background: var(--ink); color: #fff; padding: 6px 8px; font-size: 10px; font-weight: 700; text-align: left; border-right: 1px solid rgba(255,255,255,0.1); white-space: nowrap; }
   .student-table th:last-child { border-right: none; }
-  .student-table td { padding: 9px 12px; font-size: 12px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: middle; }
+  .student-table td { padding: 5px 7px; font-size: 11px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); vertical-align: middle; }
   .student-table tr:nth-child(even) td { background: var(--cream); }
   .student-table tr:hover td { background: #e8e0d0; }
   .student-table td:last-child { border-right: none; }
@@ -1028,7 +1028,7 @@ function renderClassView() {
             <td><span class="drag-handle">⠿</span></td>
             <td><strong style="color:var(--accent2)">${i+1}</strong></td>
             <td style="text-align:left;white-space:nowrap">
-              <button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button>
+              <button class="name-btn" onclick="openHistory('${s.id}')">${s.name}</button>
               <div style="font-size:10px;color:#888;margin-top:1px">${s.school||''}${s.grade?' · '+s.grade:''}</div>
             </td>
             <td><input class="editable" value="${cell.progress}" placeholder="진도"
@@ -1092,7 +1092,7 @@ function renderClassViewMobile(ds, cfg, cs, main) {
           <div class="slc-header">
             <div>
               <div class="slc-name">
-                <button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button>
+                <button class="name-btn" onclick="openHistory('${s.id}')">${s.name}</button>
               </div>
               <div class="slc-meta">${s.school||''}${s.grade?' · '+s.grade:''}</div>
             </div>
@@ -1398,20 +1398,20 @@ function renderStudentTable(list) {
     const duration = calcDuration(s.enrollDate);
     const alarm = !!payAlarms[sessionKey(s.id,s.cls)];
     return `<tr>
-      <td style="color:#aaa;text-align:center">${i+1}</td>
-      <td><button class="name-btn" onclick="openHistory('${s.id}')" style="white-space:nowrap">${s.name}</button></td>
-      <td>${s.school||'-'}</td>
-      <td>${s.grade||'-'}</td>
-      <td>${s.contact||'-'}</td>
-      <td style="text-align:center">
-        <button class="btn btn-sm" style="background:var(--accent2);color:#fff;white-space:nowrap" onclick="openMsgMenu('${s.id}')">📱 메시지</button>
+      <td style="color:#aaa;text-align:center;white-space:nowrap;font-size:10px">${i+1}</td>
+      <td style="white-space:nowrap"><button class="name-btn" onclick="openHistory('${s.id}')" style="font-size:11px;white-space:nowrap">${s.name}</button></td>
+      <td style="white-space:nowrap;font-size:11px">${s.school||'-'}</td>
+      <td style="white-space:nowrap;font-size:11px">${s.grade||'-'}</td>
+      <td style="white-space:nowrap;font-size:11px">${s.contact||'-'}</td>
+      <td style="text-align:center;white-space:nowrap">
+        <button class="btn btn-sm" style="background:var(--accent2);color:#fff;white-space:nowrap;font-size:10px;padding:2px 6px" onclick="openMsgMenu('${s.id}')">📱 메시지</button>
       </td>
-      <td>${s.textbook||'-'}</td>
-      <td><span class="tag" style="background:${cfg?.color||'#888'};color:#fff">${cfg?.icon||''} ${s.cls||'-'}</span></td>
-      <td style="color:#888;font-size:11px">${fmtEnrollDate(s.enrollDate)}</td>
-      <td style="color:#888;font-size:11px">${duration}</td>
-      <td style="text-align:center"><span style="font-weight:700;color:${alarm?'var(--accent)':'var(--accent2)'}">${total>0?display+'/'+limit:'-'}</span>${alarm?' 🚩':''}</td>
-      <td style="color:#888;font-size:11px">${lastStr}</td>
+      <td style="white-space:nowrap;font-size:11px">${s.textbook||'-'}</td>
+      <td style="white-space:nowrap"><span class="tag" style="background:${cfg?.color||'#888'};color:#fff;font-size:10px;padding:2px 5px">${s.cls||'-'}</span></td>
+      <td style="color:#888;font-size:11px;white-space:nowrap">${fmtEnrollDate(s.enrollDate)}</td>
+      <td style="color:#888;font-size:11px;white-space:nowrap">${duration}</td>
+      <td style="text-align:center;white-space:nowrap"><span style="font-weight:700;font-size:11px;color:${alarm?'var(--accent)':'var(--accent2)'}">${total>0?display+'/'+limit:'-'}</span>${alarm?' 🚩':''}</td>
+      <td style="color:#888;font-size:11px;white-space:nowrap">${lastStr}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-sm btn-outline" onclick="openHistory('${s.id}')">기록</button>
         <button class="btn btn-sm btn-outline" onclick="openEditStudentModal('${s.id}')">수정</button>
