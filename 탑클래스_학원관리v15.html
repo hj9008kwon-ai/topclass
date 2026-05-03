@@ -807,20 +807,6 @@ function saveStudents()     { save('tc_students', students); }
 function saveLessons()      { save('tc_lessons',  lessons);  }
 function saveConsult()      { save('tc_consult',  consultData); }
 function saveReceipts()     { save('tc_receipts', receipts); }
-let smsLog = load('tc_smslog', {});
-function logSMS(sid, type) {
-  if (!smsLog[sid]) smsLog[sid] = [];
-  smsLog[sid].push({ type, date: new Date().toLocaleDateString('ko-KR') });
-  save('tc_smslog', smsLog);
-}
-function getSmsCount(sid, type) {
-  if (!smsLog[sid]) return 0;
-  return type ? smsLog[sid].filter(x => x.type === type).length : smsLog[sid].length;
-}
-function getLastSms(sid) {
-  if (!smsLog[sid] || !smsLog[sid].length) return null;
-  return smsLog[sid][smsLog[sid].length - 1];
-}
 function getLastSmsTypes(sid) {
   if (!smsLog[sid] || !smsLog[sid].length) return [];
   // 최근 5개 발송 유형 목록
