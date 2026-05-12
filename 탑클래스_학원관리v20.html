@@ -1140,7 +1140,7 @@ function renderClassViewMobile(ds, cfg, cs, main) {
           </div>`:''}
           <div class="slc-field full" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
             <label>입금 날짜</label>
-            <input value="${cell.receiptDate||''}" placeholder="예) 3/28, 4/1" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:var(--paper);width:100%"
+            <input value="${cell.receiptDate ? fmtDateDisplay(cell.receiptDate) : ''}" placeholder="예) 3/28, 4/1" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:var(--paper);width:100%"
               onblur="saveField('${ds}','${currentClass}','${s.id}','receiptDate',this.value)">
           </div>
         </div>`;
