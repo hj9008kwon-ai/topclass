@@ -1063,7 +1063,7 @@ function renderClassView() {
                 <input class="editable" value="${cell.payment}" placeholder="수납 내용"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','payment',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
-                <input class="editable" value="${cell.receiptDate ? fmtDate(cell.receiptDate) : ''}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
+                <input class="editable" value="${cell.receiptDate ? fmtDateDisplay(cell.receiptDate) : ''}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','receiptDate',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
               </div>
@@ -1369,18 +1369,17 @@ function getLastLessonDate(sid, cls) {
   return dates[0] || null;
 }
 
-function fmtDate(val) {
+function fmtDateDisplay(val) {
   if (!val) return '-';
-  // 이미 YYYY-MM-DD 형식이면 그냥 파싱
   const d = new Date(val);
-  if (isNaN(d.getTime())) return val; // 파싱 실패시 원래값 반환
+  if (isNaN(d.getTime())) return String(val);
   const yy = String(d.getFullYear()).slice(2);
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
   return `${yy}년 ${mm}월 ${dd}일`;
 }
 function fmtEnrollDate(enrollDate) {
-  return fmtDate(enrollDate);
+  return fmtDateDisplay(enrollDate);
 }
 
 function calcDuration(enrollDate) {
