@@ -697,7 +697,7 @@ async function syncFromCloud(isInit=false) {
         progress:r.progress, homework:r.homework,
         attendance:r.attendance, payment:r.payment,
         snapshotSession:parseInt(r.snapshotSession)||0,
-        receiptDate:r.receiptDate||''
+        receiptDate: cleanReceiptDate(r.receiptDate||'')
       };
     }
 
@@ -1063,7 +1063,7 @@ function renderClassView() {
                 <input class="editable" value="${cell.payment}" placeholder="수납 내용"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','payment',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
-                <input class="editable" value="${cell.receiptDate ? fmtDateDisplay(cell.receiptDate) : ''}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
+                <input class="editable" value="${cell.receiptDate||''}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','receiptDate',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
               </div>
@@ -1140,7 +1140,7 @@ function renderClassViewMobile(ds, cfg, cs, main) {
           </div>`:''}
           <div class="slc-field full" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
             <label>입금 날짜</label>
-            <input value="${cell.receiptDate ? fmtDateDisplay(cell.receiptDate) : ''}" placeholder="예) 3/28, 4/1" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:var(--paper);width:100%"
+            <input value="${cell.receiptDate||''}" placeholder="예) 3/28, 4/1" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:inherit;font-size:13px;background:var(--paper);width:100%"
               onblur="saveField('${ds}','${currentClass}','${s.id}','receiptDate',this.value)">
           </div>
         </div>`;
@@ -1367,6 +1367,20 @@ function getLastLessonDate(sid, cls) {
     .filter(ds => lessons[ds]?.[cls]?.[sid]?.attendance === '출석')
     .sort().reverse();
   return dates[0] || null;
+}
+
+function cleanReceiptDate(val) {
+  if (!val) return '';
+  // GMT 형식이면 변환 (Thu Apr 30 2026... 또는 2026-04-30T...)
+  if (val.includes('GMT') || val.includes('T00:00') || val.length > 15) {
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      return `${mm}/${dd}`;
+    }
+  }
+  return val; // 이미 "3/28" 같은 형식이면 그대로
 }
 
 function fmtDateDisplay(val) {
