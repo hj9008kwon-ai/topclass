@@ -1091,7 +1091,7 @@ function renderClassView() {
                 <input class="editable" value="${cell.payment}" placeholder="수납 내용"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','payment',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
-                <input class="editable" value="${cell.receiptDate||''}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
+                <input class="editable" value="${cleanReceiptDate(cell.receiptDate||'')}" placeholder="입금날짜 (예:3/28)" style="font-size:11px;color:#888"
                   onblur="saveField('${ds}','${currentClass}','${s.id}','receiptDate',this.value)"
                   onkeydown="if(event.key==='Enter')this.blur()">
               </div>
@@ -1260,7 +1260,7 @@ function exportReceipts() {
             ${recs.map(r=>`<tr>
               <td>${fmtDateKo(r.lessonDate)}</td>
               <td>${r.cls}</td>
-              <td>${r.receiptDate}</td>
+              <td>${cleanReceiptDate(r.receiptDate||'')}</td>
               <td>${r.payment||'—'}</td>
             </tr>`).join('')}
           </tbody>
