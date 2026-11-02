@@ -1163,6 +1163,7 @@ function getLastSnapshot(ds, cls, sid) {
 // 결제 확인 — 수동으로만 알람 해제
 function confirmPayment(sid, cls) {
   if (!confirm('결제를 확인하셨나요? 결제 알람이 해제됩니다.')) return;
+  logSMS(sid, '결제확인', '', cls);
   delete payAlarms[sessionKey(sid, cls)];
   savePayAlarms();
   cloudSaveSession(sid, cls);
@@ -1358,11 +1359,12 @@ function renderClassView() {
             </td>
             <td class="${alarm?'alarm-cell':''}">
               ${alarm?(()=>{
-                const lastSms=getLastPaymentSmsInfo(s.id,currentClass);
-                const smsInfo=lastSms?`<div style="font-size:9px;color:#888;margin-top:1px;line-height:1.3">${lastSms.cycle?lastSms.cycle+'회차 ':''}${lastSms.date} 발송</div>`:'';
+                const sendCount=getPaymentSmsSendCount(s.id,currentClass);
+                const smsInfo=sendCount>0?`<div style="font-size:9px;color:#888;margin-top:1px;line-height:1.3">${sendCount}번째 발송완료</div>`:'';
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
                 <span>🚩 결제요망</span>
                 <button class="btn btn-sm" style="font-size:10px;padding:2px 7px;background:var(--accent2);color:#fff;border:none;border-radius:3px;margin-bottom:2px" onclick="sendPaymentSMS('${s.id}','${currentClass}')">📱 문자 발송</button>${smsInfo}
+                <button class="btn btn-sm" style="font-size:9px;padding:2px 6px;background:#78909c;color:#fff;border:none;border-radius:3px" onclick="showSmsHistory('${s.id}','${currentClass}')">📋 이력</button>
                 <button class="btn btn-sm" style="font-size:10px;padding:2px 7px;background:var(--green);color:#fff;border:none;border-radius:3px" onclick="confirmPayment('${s.id}','${currentClass}')">✅ 결제확인</button>
               </div>`;})():''}
             </td>
@@ -2313,13 +2315,56 @@ function logSMS(sid, type, text, cls) {
 function getSmsCount(sid) {
   return smsLog[sid] ? smsLog[sid].length : 0;
 }
-function getLastPaymentSmsInfo(sid, cls) {
-  if (!smsLog[sid]) return null;
+function getPaymentSmsSendCount(sid, cls) {
+  if (!smsLog[sid]) return 0;
+  let count = 0;
   for (let i = smsLog[sid].length - 1; i >= 0; i--) {
     const log = smsLog[sid][i];
-    if (log.type === '결제 안내' && (!cls || !log.cls || log.cls === cls)) return log;
+    if (log.type === '결제확인' && (!cls || !log.cls || log.cls === cls)) break;
+    if (log.type === '결제 안내' && (!cls || !log.cls || log.cls === cls)) count++;
   }
-  return null;
+  return count;
+}
+function getPaymentSmsHistory(sid, cls) {
+  if (!smsLog[sid]) return [];
+  const history = [];
+  for (let i = smsLog[sid].length - 1; i >= 0; i--) {
+    const log = smsLog[sid][i];
+    if (log.type === '결제확인' && (!cls || !log.cls || log.cls === cls)) {
+      history.push(log);
+      break;
+    }
+    if (log.type === '결제 안내' && (!cls || !log.cls || log.cls === cls)) history.push(log);
+  }
+  return history.reverse();
+}
+function showSmsHistory(sid, cls) {
+  const s = students.find(x => x.id === sid);
+  const history = getPaymentSmsHistory(sid, cls);
+  const name = s ? s.name : sid;
+  let html = `<div style="padding:15px;max-width:400px">
+    <h3 style="margin:0 0 10px">📋 결제문자 발송 이력</h3>
+    <div style="font-size:13px;color:#888;margin-bottom:10px">${name} — ${cls}</div>`;
+  if (history.length === 0) {
+    html += '<div style="color:#aaa;font-size:13px">이번 사이클 발송 이력 없음</div>';
+  } else {
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    history.forEach((log, idx) => {
+      if (log.type === '결제확인') {
+        html += `<div style="padding:6px 10px;background:#e8f5e9;border-radius:6px;font-size:12px">✅ 결제확인 — ${log.date}</div>`;
+      } else {
+        html += `<div style="padding:6px 10px;background:#fff3e0;border-radius:6px;font-size:12px">📱 ${idx+1}번째 발송 — ${log.date}</div>`;
+      }
+    });
+    html += '</div>';
+  }
+  html += `<button onclick="this.closest('.modal-overlay').remove()" style="margin-top:15px;padding:6px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer">닫기</button></div>`;
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:9999';
+  overlay.innerHTML = `<div style="background:var(--bg);border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.3)">${html}</div>`;
+  overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
 }
 function getLastSmsLogs(sid) {
   if (!smsLog[sid] || !smsLog[sid].length) return [];
@@ -2480,6 +2525,7 @@ async function checkSolapiBalance() {
 // Override confirmPayment to also show message
 function confirmPayment(sid, cls) {
   if (!confirm('결제를 확인하셨나요? 결제 알람이 해제됩니다.')) return;
+  logSMS(sid, '결제확인', '', cls);
   delete payAlarms[sessionKey(sid, cls)];
   savePayAlarms();
   cloudSaveSession(sid, cls);
