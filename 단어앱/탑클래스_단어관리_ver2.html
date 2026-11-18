@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>탑클래스 단어관리</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0f1923; --paper: #f5f0e8; --cream: #ede8dc; --accent: #c8401a; --accent2: #1a5c8f;
+    --navy: #1A3A6B; --gold: #c9972a; --green: #1e7a4a; --border: #c4bba8; --shadow: rgba(15,25,35,0.12); --radius: 6px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--paper); color: var(--ink); min-height: 100vh; font-size: 13px; }
+  button, select, input, textarea { font-family: inherit; }
+  header { background: var(--ink); color: #fff; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 58px; border-bottom: 3px solid var(--navy); }
+  .logo-wrap { display: flex; align-items: baseline; gap: 8px; }
+  .logo-main { font-family: 'DM Sans', sans-serif; font-size: 18px; font-weight: 700; color: #fff; }
+  .logo-main span { color: var(--gold); }
+  .logo-sub { font-size: 11px; color: rgba(255,255,255,0.45); }
+  .header-nav { display: flex; gap: 6px; align-items: center; }
+  .nav-btn { background: none; border: 1.5px solid rgba(255,255,255,0.2); color: rgba(255,255,255,0.8); padding: 6px 13px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 500; }
+  .nav-btn:hover, .nav-btn.active { background: var(--navy); border-color: #5a7bb5; color: #fff; }
+  .sync { font-size: 11px; color: rgba(255,255,255,0.6); margin-left: 10px; cursor: pointer; }
+  .sync.err { color: #ffb199; font-weight: 700; }
+  .app { display: flex; height: calc(100vh - 58px); overflow: hidden; }
+  .sidebar { width: 252px; min-width: 252px; background: var(--cream); border-right: 1.5px solid var(--border); display: flex; flex-direction: column; overflow-y: auto; }
+  .main { flex: 1; overflow-y: auto; padding: 22px 24px 60px; }
+  .calendar-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+  .cal-month { font-size: 15px; font-weight: 700; }
+  .cal-nav { background: none; border: none; cursor: pointer; font-size: 16px; padding: 2px 5px; }
+  .cal-nav:hover { color: var(--accent); }
+  .cal-grid { padding: 0 10px 10px; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); text-align: center; font-size: 10px; font-weight: 700; color: #888; padding: 3px 0; }
+  .cal-weekdays span:first-child { color: #e05; } .cal-weekdays span:last-child { color: var(--accent2); }
+  .cal-days { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+  .cal-day { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 11px; border-radius: 4px; cursor: pointer; position: relative; font-weight: 500; }
+  .cal-day:hover { background: var(--border); }
+  .cal-day.today { background: var(--ink); color: #fff; font-weight: 700; }
+  .cal-day.selected { background: var(--navy); color: #fff; font-weight: 700; }
+  .cal-day.empty { cursor: default; } .cal-day.empty:hover { background: none; }
+  .cal-day.sun { color: #e05; } .cal-day.sat { color: var(--accent2); }
+  .cal-day.today.sun, .cal-day.today.sat, .cal-day.selected.sun, .cal-day.selected.sat { color: #fff; }
+  .cal-day .dot { position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%); width: 3px; height: 3px; border-radius: 50%; background: var(--gold); }
+  .sidebar-section { border-top: 1.5px solid var(--border); padding: 10px 14px; }
+  .sidebar-section h3 { font-size: 10px; font-weight: 700; letter-spacing: 1px; color: #888; margin-bottom: 7px; }
+  .class-chip { display: flex; align-items: center; gap: 7px; padding: 7px 9px; border-radius: var(--radius); cursor: pointer; margin-bottom: 3px; font-size: 12px; font-weight: 500; }
+  .class-chip:hover { background: var(--border); }
+  .class-chip.active { background: var(--ink); color: #fff; }
+  .class-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .class-time { font-size: 9px; color: #888; margin-left: auto; }
+  .class-chip.active .class-time { color: rgba(255,255,255,0.5); }
+  .alert-box { background: #fff4e5; border: 1.5px solid #f0b46b; border-radius: var(--radius); padding: 8px 10px; font-size: 12px; cursor: pointer; margin-bottom: 6px; }
+  .alert-box b { color: var(--accent); }
+  h1.page-title { font-size: 20px; font-weight: 900; margin-bottom: 4px; }
+  .page-sub { color: #777; font-size: 12px; margin-bottom: 16px; }
+  .card { background: #fff; border: 1.5px solid var(--border); border-radius: 8px; margin-bottom: 18px; box-shadow: 0 1px 3px var(--shadow); }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1.5px solid var(--cream); flex-wrap: wrap; }
+  .card-head .ttl { font-size: 15px; font-weight: 700; }
+  .card-head .sub { font-size: 11px; color: #888; }
+  .card-head .sp { flex: 1; }
+  .btn { background: #fff; border: 1.5px solid var(--border); color: var(--ink); padding: 5px 11px; border-radius: var(--radius); cursor: pointer; font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .btn:hover { border-color: var(--ink); }
+  .btn.pri { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .btn.pri:hover { background: #12305a; }
+  .btn.gold { background: var(--gold); border-color: var(--gold); color: #fff; }
+  .btn.red { color: var(--accent); }
+  .btn.sm { padding: 3px 8px; font-size: 11px; }
+  .btn:disabled { opacity: .45; cursor: default; }
+  table.grid { width: 100%; border-collapse: collapse; }
+  table.grid th { background: #f3efe6; font-size: 11px; font-weight: 700; color: #555; padding: 7px 8px; text-align: left; border-bottom: 1.5px solid var(--border); }
+  table.grid td { padding: 8px; border-bottom: 1px solid #eee5d6; vertical-align: top; }
+  table.grid tr.absent td { background: #f4f4f4; color: #999; }
+  .sname { font-weight: 700; font-size: 13px; cursor: pointer; color: var(--ink); }
+  .sname:hover { color: var(--accent2); text-decoration: underline; }
+  .sschool { font-size: 10px; color: #999; }
+  .st-line { font-size: 11.5px; line-height: 1.5; margin-bottom: 5px; }
+  .st-line .bk { font-weight: 700; }
+  .st-line .nx { color: var(--accent2); font-weight: 700; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 3px; vertical-align: 1px; }
+  .b-pass { background: #e3f3ea; color: var(--green); }
+  .b-re { background: #fde8e2; color: var(--accent); }
+  .b-end { background: #fff0cc; color: #9a6b00; }
+  .b-cum { background: #e7eefa; color: var(--navy); cursor: pointer; }
+  .b-abs { background: #eee; color: #666; }
+  .bld { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-bottom: 6px; padding-bottom: 6px; border-bottom: 1px dashed #eee5d6; }
+  .bld:last-child { border-bottom: none; margin-bottom: 0; }
+  .bld select, .bld input { font-size: 11px; padding: 3px 1px; border: 1px solid var(--border); border-radius: 4px; background: #fff; max-width: 96px; }
+  .bld select.setsel { max-width: 128px; font-weight: 700; }
+  .bld .lbl { font-size: 10px; color: #999; }
+  .bld .add { font-size: 11px; color: var(--accent2); cursor: pointer; }
+  .rec-line { display: flex; align-items: center; gap: 4px; font-size: 11px; margin-bottom: 4px; flex-wrap: wrap; }
+  .rec-line select { font-size: 11px; padding: 2px; border: 1px solid var(--border); border-radius: 4px; }
+  .rec-line select.pass { background: #e3f3ea; color: var(--green); font-weight: 700; }
+  .rec-line select.re { background: #fde8e2; color: var(--accent); font-weight: 700; }
+  textarea.hw { width: 100%; min-width: 150px; font-size: 12px; padding: 5px 6px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; min-height: 34px; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(15,25,35,.45); display: none; align-items: flex-start; justify-content: center; z-index: 50; padding-top: 6vh; }
+  .modal-bg.show { display: flex; }
+  .modal { background: #fff; border-radius: 10px; width: 640px; max-width: 94vw; max-height: 86vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,.25); }
+  .modal.wide { width: 920px; }
+  .modal-h { display: flex; align-items: center; padding: 14px 18px; border-bottom: 1.5px solid var(--cream); position: sticky; top: 0; background: #fff; z-index: 2; }
+  .modal-h h2 { font-size: 16px; font-weight: 700; flex: 1; }
+  .modal-x { background: none; border: none; font-size: 20px; cursor: pointer; color: #888; }
+  .modal-b { padding: 16px 18px; }
+  .modal-f { padding: 12px 18px; border-top: 1.5px solid var(--cream); display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; background: #fff; }
+  .frm { display: grid; grid-template-columns: 90px 1fr; gap: 8px 10px; align-items: center; margin-bottom: 12px; }
+  .frm label { font-size: 12px; color: #666; font-weight: 500; }
+  .frm input[type=checkbox] { width: auto; margin-right: 3px; vertical-align: -2px; }
+  .frm .chk { display: inline-block; margin: 0 12px 4px 0; font-size: 12.5px; color: var(--ink); }
+  .frm input, .frm select, .frm textarea { padding: 6px 8px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 13px; width: 100%; }
+  .kakao { width: 100%; min-height: 200px; font-size: 13px; padding: 10px; border: 1.5px solid var(--border); border-radius: 6px; line-height: 1.6; }
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--ink); color: #fff; padding: 10px 18px; border-radius: 6px; font-size: 13px; z-index: 99; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .tree-cat { font-size: 14px; font-weight: 900; margin: 14px 0 6px; }
+  .tree-type { font-size: 12px; font-weight: 700; color: #777; margin: 8px 0 4px 6px; }
+  .set-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border: 1px solid var(--border); border-radius: 6px; margin: 0 0 5px 6px; cursor: pointer; }
+  .set-row:hover { border-color: var(--navy); }
+  .set-row .nm { font-weight: 700; flex: 1; }
+  .set-row .mt { font-size: 11px; color: #888; }
+  .unit-chip { display: inline-block; padding: 4px 9px; margin: 0 4px 5px 0; border: 1px solid var(--border); border-radius: 14px; font-size: 11.5px; cursor: pointer; background: #fff; }
+  .unit-chip.on { background: var(--navy); color: #fff; border-color: var(--navy); }
+  table.wt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.wt th { text-align: left; background: #f3efe6; padding: 5px 6px; font-size: 11px; }
+  table.wt td { padding: 3px 6px; border-bottom: 1px solid #eee5d6; }
+  table.wt td.en { font-weight: 700; width: 30%; }
+  table.wt input { width: 100%; border: 1px solid transparent; padding: 3px 4px; font-size: 12px; border-radius: 3px; }
+  table.wt input:hover, table.wt input:focus { border-color: var(--border); background: #fffdf8; }
+  .muted { color: #999; font-size: 11px; }
+  .empty-msg { padding: 30px; text-align: center; color: #999; }
+  .loading { position: fixed; inset: 0; background: var(--paper); display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; z-index: 100; font-size: 14px; }
+  .plan-row { display: grid; grid-template-columns: 1.6fr 1.1fr .7fr .9fr .8fr 30px; gap: 5px; margin-bottom: 6px; }
+  .plan-row select, .plan-row input { padding: 5px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 12px; width: 100%; }
+  .plan-head { display: grid; grid-template-columns: 1.6fr 1.1fr .7fr .9fr .8fr 30px; gap: 5px; font-size: 10.5px; color: #888; margin-bottom: 3px; }
+  #printFrame { position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: 0; }
+</style>
+</head>
+<body>
+<div class="loading" id="loading"><div style="font-size:28px">📚</div><div id="loadingMsg">단어DB 불러오는 중…</div></div>
+<header>
+  <div class="logo-wrap"><div class="logo-main">TOP<span>CLASS</span> 단어관리</div><div class="logo-sub">탑클래스 입시영어</div></div>
+  <div class="header-nav">
+    <button class="nav-btn active" data-view="today" onclick="go('today')">📅 수업</button>
+    <button class="nav-btn" data-view="students" onclick="go('students')">👩‍🎓 학생 관리</button>
+    <button class="nav-btn" data-view="db" onclick="go('db')">📚 단어DB</button>
+    <button class="nav-btn" data-view="report" onclick="go('report')">📝 월간 보고</button>
+    <span class="sync" id="sync" onclick="retryPending()">●</span>
+  </div>
+</header>
+<div class="app">
+  <aside class="sidebar">
+    <div class="calendar-header"><button class="cal-nav" onclick="calMove(-1)">‹</button><div class="cal-month" id="calMonth"></div><button class="cal-nav" onclick="calMove(1)">›</button></div>
+    <div class="cal-grid"><div class="cal-weekdays"><span>일</span><span>월</span><span>화</span><span>수</span><span>목</span><span>금</span><span>토</span></div><div class="cal-days" id="calDays"></div></div>
+    <div class="sidebar-section" id="alertSec"></div>
+    <div class="sidebar-section"><h3>이 날 수업 반</h3><div id="dayClasses"></div></div>
+    <div class="sidebar-section"><h3>전체 반</h3><div id="allClasses"></div></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()"><div class="modal" id="modal"></div></div>
+<div class="toast" id="toast"></div>
+<iframe id="printFrame" title="print"></iframe>
+<input type="file" id="importFile" accept=".json" style="display:none" onchange="onImportFile(this)">
+<script>
+// ════════ 설정 ════════
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbycngOgGfa-hDinezkdKWXdl780BnnKNQWh2kRTPpz6Hi73-vFHmS13kXUkhEZs6rj2/exec';
+const APP_VER = 'ver2';
+const WD = ['일','월','화','수','목','금','토'];
+const METHOD = { en2ko: '영→한 (뜻 쓰기)', ko2en: '한→영 (영어 쓰기)', mix: '섞기 (뜻+영어)' };
+const OUTS = { test: '시험지만', key: '시험지+정답지', list: '단어장' };
+const METHOD_S = { en2ko: '영→한', ko2en: '한→영', mix: '섞기' };
+const OUTS_S = { test: '시험지', key: '+정답지', list: '단어장' };
+const COUNTS = ['all', 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 120];
+
+// ════════ 상태 ════════
+let DB = { sets: [], students: [], records: [], homework: [], settings: {} };
+let CLASSES = {};
+let WORDS = [];                 // 전체 단어
+const W = {};                   // id → word
+const BYSET = {};               // setId → [word]
+const UNITS = {};               // setId → [{u,label,n}]
+let VIEW = 'today', SEL_DATE = ymd(new Date()), CAL = new Date(), SEL_CLASS = null;
+const BUILD = {};               // `${date}|${sid}` → [row]
+let DB_SEL = { set: null, u: null, q: '' };
+
+// ════════ 유틸 ════════
+function ymd(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function parseYmd(s) { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); }
+function esc(s) { return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function uid(p) { return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function shuffle(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function toast(msg, ms = 2200) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms); }
+function dLabel(ds) { const d = parseYmd(ds); return `${d.getMonth() + 1}/${d.getDate()} ${WD[d.getDay()]}`; }
+function lsGet(k, def) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : def; } catch (e) { return def; } }
+function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+// 단어 캐시는 IndexedDB에 저장 (같은 주소의 학원관리 앱 localStorage 용량을 쓰지 않도록)
+function idb() {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('tcv_vocab', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('kv');
+    rq.onsuccess = () => res(rq.result); rq.onerror = () => rej(rq.error);
+  });
+}
+async function idbGet(k) {
+  try { const db = await idb(); return await new Promise(r => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => r(q.result || null); q.onerror = () => r(null); }); }
+  catch (e) { return null; }
+}
+async function idbSet(k, v) {
+  try { const db = await idb(); await new Promise(r => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = r; t.onerror = r; }); } catch (e) {}
+}
+function copyText(txt) {
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => toast('복사했어요'), () => fallbackCopy(txt));
+  else fallbackCopy(txt);
+}
+function fallbackCopy(txt) { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); toast('복사했어요'); }
+
+// ════════ 서버 통신 ════════
+async function apiGet(params) {
+  const res = await fetch(SCRIPT_URL + '?' + new URLSearchParams(params));
+  const j = await res.json(); if (j.error) throw new Error(j.error); return j;
+}
+async function apiPost(body) {
+  const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(body) });
+  const j = await res.json(); if (j.error) throw new Error(j.error); return j;
+}
+let PENDING = lsGet('tcv_pending', []);
+function setSync() {
+  const el = document.getElementById('sync');
+  if (PENDING.length && FLUSHING) { el.className = 'sync'; el.textContent = `⏳ 저장 중… (${PENDING.length}건)`; }
+  else if (PENDING.length) { el.className = 'sync err'; el.textContent = `⚠ 저장 대기 ${PENDING.length}건 (30초 뒤 자동 저장 · 누르면 바로)`; }
+  else { el.className = 'sync'; el.textContent = '● 저장됨'; }
+}
+async function save(body) {
+  PENDING.push(body); lsSet('tcv_pending', PENDING); setSync();
+  await flush();
+}
+let FLUSHING = false;
+async function flush() {
+  if (FLUSHING) return; FLUSHING = true; setSync();
+  try {
+    while (PENDING.length) {
+      try { await apiPost(PENDING[0]); PENDING.shift(); lsSet('tcv_pending', PENDING); }
+      catch (e) { console.warn(e); toast('⚠ 저장이 안 됐어요 — 30초 뒤 자동으로 다시 저장해요', 4000); break; }
+    }
+  } finally { FLUSHING = false; setSync(); }
+}
+function retryPending() { if (PENDING.length) flush(); }
+// 저장이 밀려 있으면 30초마다 다시 시도, 저장 중에 창을 닫으려 하면 경고
+setInterval(() => { if (PENDING.length && !FLUSHING) flush(); }, 30000);
+window.addEventListener('beforeunload', e => { if (PENDING.length) { e.preventDefault(); e.returnValue = ''; } });
+
+// ════════ 불러오기 ════════
+async function boot() {
+  const msg = document.getElementById('loadingMsg');
+  try {
+    const all = await apiGet({ action: 'readAll' });
+    applyAll(all);
+    idbSet('core', all);
+  } catch (e) {
+    const c = await idbGet('core');
+    if (!c) { msg.innerHTML = '서버에 연결하지 못했어요.<br><small>' + esc(e.message) + '</small><br><button class="btn" onclick="location.reload()">다시 시도</button>'; return; }
+    applyAll(c); toast('⚠ 서버 연결 실패 — 마지막으로 저장된 내용으로 열었어요', 5000);
+  }
+  msg.textContent = '단어 불러오는 중…';
+  const ver = DB.settings.wordsVer || '1';
+  let cache = await idbGet('words');
+  if (!cache || cache.ver !== ver) {
+    try { cache = await apiGet({ action: 'readWords' }); idbSet('words', cache); }
+    catch (e) { if (!cache) { msg.textContent = '단어를 불러오지 못했어요: ' + e.message; return; } }
+  }
+  applyWords(cache.rows);
+  document.getElementById('loading').style.display = 'none';
+  setSync(); flush();
+  render();
+}
+function applyAll(all) {
+  DB.sets = all.sets || [];
+  DB.students = (all.students || []).map(s => ({ ...s, plans: safeJson(s.plans, []), active: s.active === '' ? '1' : String(s.active), order: Number(s.order) || 999 }));
+  DB.records = all.records || [];
+  DB.homework = all.homework || [];
+  DB.settings = all.settings || {};
+  CLASSES = safeJson(DB.settings.classes, {});
+}
+function safeJson(s, def) { try { return typeof s === 'string' ? (s ? JSON.parse(s) : def) : (s ?? def); } catch (e) { return def; } }
+function applyWords(rows) {
+  WORDS = rows.map(r => ({ id: r[0], set: r[1], unit: r[2], u: Number(r[3]), en: r[4], ko: r[5], q: r[6], kind: r[7], src: r[8], added: r[9] }));
+  for (const k in W) delete W[k];
+  for (const k in BYSET) delete BYSET[k];
+  for (const k in UNITS) delete UNITS[k];
+  for (const w of WORDS) { W[w.id] = w; (BYSET[w.set] = BYSET[w.set] || []).push(w); }
+  for (const sid in BYSET) {
+    const m = new Map();
+    for (const w of BYSET[sid]) { if (!m.has(w.u)) m.set(w.u, { u: w.u, label: w.unit, n: 0 }); if (!w.kind) m.get(w.u).n++; }
+    UNITS[sid] = [...m.values()].sort((a, b) => a.u - b.u);
+  }
+}
+async function reloadWords() {
+  const c = await apiGet({ action: 'readWords' }); idbSet('words', c); DB.settings.wordsVer = c.ver; applyWords(c.rows);
+}
+
+// ════════ 데이터 도우미 ════════
+const setOf = id => DB.sets.find(s => s.id === id);
+const stuOf = id => DB.students.find(s => s.id === id);
+function units(setId) { return UNITS[setId] || []; }
+function unitIdx(setId, u) { return units(setId).findIndex(x => x.u === Number(u)); }
+function unitLabel(setId, u) { if (u === 'all') return '전체'; const x = units(setId).find(x => x.u === Number(u)); return x ? x.label : String(u); }
+function shortUnit(label) {
+  const m = String(label).match(/^(DAY|INDEX|UNIT|Chapter|Section|수능유형)\s+\S+/);
+  return m ? m[0] : label;
+}
+function rangeLabel(setId, from, to) {
+  if (from === 'all' || from === '' || from == null) return '전체';
+  const st = setOf(setId);
+  if (st && st.rule === 'elem_page') return `${unitLabel(setId, from).replace('쪽', '')}~${unitLabel(setId, to)}`;
+  if (to === '' || to == null || String(from) === String(to)) return unitLabel(setId, from);
+  const a = shortUnit(unitLabel(setId, from)), b = shortUnit(unitLabel(setId, to));
+  const pa = a.match(/^(DAY|INDEX|Section|UNIT|Chapter)\s/), pb = b.match(/^(DAY|INDEX|Section|UNIT|Chapter)\s/);
+  if (pa && pb && pa[1] === pb[1]) return `${a} ~ ${b.slice(pb[0].length)}`;
+  return `${a} ~ ${b}`;
+}
+function shortName(setId) { const s = setOf(setId); return s ? s.name.replace('해커스 보카 ', '해커스 ') : setId; }
+function activeStudents() { return DB.students.filter(s => s.active !== '0'); }
+function studentsOf(cls) { return activeStudents().filter(s => s.cls === cls).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name)); }
+function classesOn(ds) { const wd = parseYmd(ds).getDay(); return Object.keys(CLASSES).filter(c => (CLASSES[c].days || []).includes(wd)); }
+function recsOf(sid) { return DB.records.filter(r => r.sid === sid); }
+function recsOn(ds, sid) { return DB.records.filter(r => r.date === ds && r.sid === sid); }
+function isAbsent(ds, sid) { return DB.records.some(r => r.date === ds && r.sid === sid && r.result === '결석'); }
+function lastRec(sid, setId) { return recsOf(sid).filter(r => r.set === setId && r.result !== '결석').sort((a, b) => (a.date + a.created).localeCompare(b.date + b.created)).pop(); }
+function hwOf(ds, sid) { const h = DB.homework.find(x => x.date === ds && x.sid === sid); return h ? h.text : ''; }
+function rowStudent(s) { return { id: s.id, name: s.name, cls: s.cls, school: s.school || '', plans: JSON.stringify(s.plans || []), memo: s.memo || '', active: s.active ?? '1', order: s.order ?? 999 }; }
+async function saveStudent(s) { await save({ action: 'saveStudent', row: rowStudent(s) }); }
+</script>
+<script>
+// ════════ 진도 계산 ════════
+const PROG_RULES = ['book', 'reader', 'mock'];
+function planFor(s, setId) { return (s.plans || []).find(p => p.set === setId); }
+function testsLeft(plan) {
+  const st = setOf(plan.set); if (!st || !PROG_RULES.includes(st.rule) || plan.next === 'all' || plan.next == null || plan.done) return null;
+  const us = units(plan.set); const i = unitIdx(plan.set, plan.next); if (i < 0) return null;
+  return Math.ceil((us.length - i) / (Number(plan.amt) || 1));
+}
+function cumSuggest(sid, plan) {
+  const st = setOf(plan.set); if (!st || st.rule !== 'book') return null;
+  const rs = recsOf(sid).filter(r => r.set === plan.set).sort((a, b) => (a.date + a.created).localeCompare(b.date + b.created));
+  let start = 0; rs.forEach((r, i) => { if (r.note === '누적') start = i + 1; });
+  const got = new Set();
+  for (const r of rs.slice(start)) {
+    if (r.result !== '통과' || r.from === 'all' || r.note === '공통') continue;
+    for (const x of units(plan.set)) if (x.u >= Number(r.from) && x.u <= Number(r.to) && /^DAY /.test(x.label)) got.add(x.u);
+  }
+  if (got.size < 5) return null;
+  const arr = [...got].sort((a, b) => a - b);
+  return { from: arr[0], to: arr[arr.length - 1], n: got.size };
+}
+function defaultRow(s, plan) {
+  const st = setOf(plan.set); const us = units(plan.set);
+  const row = { set: plan.set, from: 'all', to: '', count: plan.count || 'all', method: plan.method || 'en2ko', out: 'test', note: '' };
+  if (!st || !us.length) return row;
+  if (st.rule === 'elem_page') { row.from = us[0].u; row.to = plan.next != null && plan.next !== '' ? Number(plan.next) : us[us.length - 1].u; row.count = plan.count || 80; }
+  else if (st.rule === 'elem_all') { row.from = 'all'; row.count = plan.count || 80; }
+  else if (plan.next === 'all') { row.from = 'all'; }
+  else {
+    if (plan.next == null || plan.next === '') row.unset = true;
+    let i = unitIdx(plan.set, plan.next); if (i < 0) i = 0;
+    row.from = us[i].u;
+    row.to = us[Math.min(i + (Number(plan.amt) || 1) - 1, us.length - 1)].u;
+  }
+  return row;
+}
+function buildRows(ds, s) {
+  const k = ds + '|' + s.id;
+  if (!BUILD[k]) BUILD[k] = (s.plans || []).filter(p => setOf(p.set)).map(p => defaultRow(s, p));
+  return BUILD[k];
+}
+function resetBuild(ds, sid) { delete BUILD[ds + '|' + sid]; }
+
+// 결과 반영 → 다음 범위 자동 조정
+async function setResult(recId, res) {
+  const r = DB.records.find(x => x.id === recId); if (!r) return;
+  r.result = res;
+  const s = stuOf(r.sid); const plan = s && planFor(s, r.set); const st = setOf(r.set);
+  let changed = false;
+  if (plan && st && r.note !== '누적' && lastRec(r.sid, r.set) === r) {
+    const us = units(r.set);
+    if (res === '통과') {
+      if (PROG_RULES.includes(st.rule)) {
+        if (r.from === 'all') { plan.done = true; }
+        else {
+          const i = unitIdx(r.set, r.to);
+          if (i >= 0 && i + 1 < us.length) { plan.next = us[i + 1].u; plan.done = false; }
+          else {
+            const after = plan.after || (st.rule === 'mock' ? 'all' : '');
+            if (after === 'all') { plan.next = 'all'; plan.count = plan.count || 100; plan.done = false; }
+            else if (after === 'review') { plan.next = us[0].u; plan.done = false; }
+            else { plan.done = true; }
+            delete plan.after;
+          }
+        }
+        changed = true;
+      } else if (st.rule === 'elem_page') {
+        const i = unitIdx(r.set, r.to); plan.next = us[Math.min(i + 1, us.length - 1)].u; changed = true;
+      }
+    } else if (PROG_RULES.includes(st.rule) && r.from !== 'all') { plan.next = Number(r.from); plan.done = false; changed = true; }
+    else if (st.rule === 'elem_page') { plan.next = Number(r.to); changed = true; }
+  }
+  await save({ action: 'saveRecords', rows: [r] });
+  if (changed) {
+    for (const k in BUILD) if (k.endsWith('|' + r.sid) && !k.startsWith(r.date + '|')) delete BUILD[k];
+    await saveStudent(s);
+  }
+  render();
+}
+
+async function toggleAbsent(ds, sid) {
+  const ex = DB.records.find(r => r.date === ds && r.sid === sid && r.result === '결석');
+  if (ex) { DB.records = DB.records.filter(r => r !== ex); await save({ action: 'deleteRecord', id: ex.id }); }
+  else {
+    const r = { id: uid('r'), date: ds, sid, set: '', from: '', to: '', count: '', method: '', words: '', result: '결석', note: '', created: new Date().toISOString() };
+    DB.records.push(r); await save({ action: 'saveRecords', rows: [r] });
+  }
+  render();
+}
+
+// ════════ 출제 ════════
+function poolOf(row) {
+  const ws = (BYSET[row.set] || []).filter(w => !w.kind);
+  if (row.from === 'all' || row.from === '') return ws;
+  const a = Number(row.from), b = row.to === '' || row.to == null ? a : Number(row.to);
+  return ws.filter(w => w.u >= a && w.u <= b);
+}
+function generate(row, sid) {
+  const st = setOf(row.set);
+  let pool = poolOf(row);
+  const n = row.count === 'all' ? pool.length : Math.min(Number(row.count), pool.length);
+  let picked;
+  if (st && st.rule === 'elem_all') {
+    const adds = pool.map(w => w.added).filter(Boolean).sort();
+    const latest = adds[adds.length - 1];
+    const tested = latest && recsOf(sid).some(r => r.set === row.set && r.result !== '결석' && r.date > latest);
+    if (latest && !tested) {
+      const fresh = shuffle(pool.filter(w => w.added === latest));
+      const newPart = fresh.slice(0, Math.min(20, fresh.length, n));
+      const ids = new Set(newPart.map(w => w.id));
+      picked = newPart.concat(shuffle(pool.filter(w => !ids.has(w.id))).slice(0, n - newPart.length));
+      picked = shuffle(picked);
+    }
+  }
+  if (!picked) picked = shuffle(pool).slice(0, n);
+  let items;
+  if (row.method === 'mix') { const h = Math.ceil(picked.length / 2); items = picked.map((w, i) => ({ w, dir: i < h ? 'e' : 'k' })); }
+  else items = picked.map(w => ({ w, dir: row.method === 'ko2en' ? 'k' : 'e' }));
+  return items;
+}
+// 기록에는 단어 번호만 저장 (set이 같으면 '00012', 다르면 전체 id)
+// 같은 날 · 같은 책 · 같은 범위 · 같은 문항 수 · 같은 방식이면 이미 만든 시험지와 같은 문제로
+function sameDayItems(row, batch) {
+  const pool = poolOf(row); if (!pool.length) return null;
+  const n = row.count === 'all' ? pool.length : Math.min(Number(row.count), pool.length);
+  const from = String(row.from), to = row.from === 'all' ? '' : String(row.to || row.from);
+  const hit = [...(batch || []), ...DB.records].find(r => r.date === SEL_DATE && r.set === row.set && r.from === from && r.to === to && r.method === row.method && r.count === String(n) && r.words);
+  if (!hit) return null;
+  const items = strToItems(hit.words, hit.set);
+  return items.length === n ? items : null;
+}
+function itemsToStr(items, setId) { return items.map(it => (it.w.set === setId ? it.w.id.split('-').pop() : it.w.id) + (it.dir === 'k' ? '~k' : '')).join(','); }
+function strToItems(s, setId) {
+  return String(s || '').split(',').filter(Boolean).map(t => { const [k, d] = t.split('~'); const id = k.includes('-') ? k : setId + '-' + k; return W[id] ? { w: W[id], dir: d === 'k' ? 'k' : 'e' } : null; }).filter(Boolean);
+}
+function rangeIncludesEnd(row) {
+  const st = setOf(row.set); if (!st || !PROG_RULES.includes(st.rule) || row.from === 'all') return false;
+  const us = units(row.set); return us.length && Number(row.to || row.from) >= us[us.length - 1].u;
+}
+
+// ════════ 시험지 HTML ════════
+function sheetPages(o) {
+  // o: {title, setName, range, name, date, items, mode:'test'|'key'|'list', elem}
+  const maxPer = o.elem ? 80 : 120;
+  const nPages = Math.max(1, Math.ceil(o.items.length / maxPer));
+  const per = Math.ceil(o.items.length / nPages) || 1;
+  const pages = [];
+  const mixed = o.items.some(i => i.dir === 'k') && o.items.some(i => i.dir === 'e');
+  for (let p = 0; p < nPages; p++) {
+    const chunk = o.items.slice(p * per, (p + 1) * per);
+    const base = p * per;
+    let left, right, hl = '', hr = '';
+    if (mixed) {
+      left = chunk.filter(i => i.dir === 'e'); right = chunk.filter(i => i.dir === 'k');
+      hl = `A. 우리말 뜻 쓰기 (${base + 1}~${base + left.length})`; hr = `B. 영어 스펠링 쓰기 (${base + left.length + 1}~${base + chunk.length})`;
+    } else { const h = Math.ceil(chunk.length / 2); left = chunk.slice(0, h); right = chunk.slice(h); }
+    const rows = Math.max(left.length, right.length, o.elem ? 20 : 1);
+    const avail = mixed ? 236 : 242;
+    const rowH = Math.min(avail / rows, 13);
+    const fs = Math.max(7.2, Math.min(rowH * 2.83 * 0.6, o.elem ? 12.5 : 11));
+    const col = (list, start, head) => `<div class="col">${head ? `<div class="sec">${head}</div>` : ''}${list.map((it, i) => {
+      const q = it.dir === 'e' ? it.w.en : it.w.ko, a = it.dir === 'e' ? it.w.ko : it.w.en;
+      const ans = o.mode === 'test' ? '' : esc(a);
+      return `<div class="it" style="height:${rowH.toFixed(2)}mm;font-size:${fs.toFixed(1)}pt"><span class="no">${start + i + 1}</span><span class="q${it.dir === 'k' ? ' kq' : ''}">${esc(q)}</span><span class="ln${o.mode === 'list' ? ' plain' : ''}">${ans}</span></div>`;
+    }).join('')}</div>`;
+    const instr = o.mode === 'list' ? '아래 단어와 뜻을 확인하며 학습하세요.' : mixed ? 'A는 우리말 뜻을, B는 영어 단어를 쓰시오.' : o.items[0] && o.items[0].dir === 'k' ? '다음 우리말에 맞는 영어 단어를 쓰시오.' : '다음 영어 단어의 뜻을 한글로 쓰시오.';
+    const tag = o.mode === 'key' ? '정답지' : o.mode === 'list' ? '단어장' : `총 ${o.items.length}문항`;
+    pages.push(`<section class="sheet">
+      <div class="hd"><span class="brand">탑클래스 입시영어</span><span class="ttl" style="font-size:${o.title.length > 34 ? 10 : o.title.length > 26 ? 11.5 : 12.5}pt">${esc(o.title)}</span><span class="tag">${esc(tag)}${nPages > 1 ? ` · ${p + 1}/${nPages}` : ''}</span></div>
+      <div class="info"><span>이름 : <b>${esc(o.name || '')}</b><i class="bl"></i></span><span>날짜 : <b>${esc(o.date || '')}</b></span>${o.mode === 'list' ? '' : `<span>점수 : <i class="bl s"></i> / ${o.items.length}</span>`}<span class="ins">${instr}</span></div>
+      <div class="cols">${col(left, base, hl)}${col(right, base + left.length, hr)}</div>
+      <div class="ft"><span>탑클래스 입시영어 · 무단 복제 및 배포 금지</span><span>${esc(o.setName || '')}</span></div>
+    </section>`);
+  }
+  return pages;
+}
+const PRINT_CSS = `@page { size: A4; margin: 8mm 8mm; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif; color: #111; }
+.sheet { width: 194mm; height: 280mm; page-break-after: always; break-after: page; overflow: hidden; position: relative; }
+.sheet:last-child { page-break-after: auto; break-after: auto; }
+.hd { background: #1A3A6B; color: #fff; height: 11mm; padding: 0 4mm; display: flex; align-items: center; justify-content: space-between; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.hd .brand { font-size: 9pt; font-weight: 700; width: 40mm; } .hd .ttl { font-size: 12.5pt; font-weight: 900; text-align: center; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .hd .tag { font-size: 9pt; width: 40mm; text-align: right; opacity: .9; }
+.info { height: 9mm; display: flex; align-items: center; gap: 7mm; font-size: 9.5pt; border-bottom: 1.4px solid #1A3A6B; padding: 0 1mm; }
+.info .bl { display: inline-block; width: 22mm; border-bottom: 1px solid #333; margin-left: 1mm; } .info .bl.s { width: 12mm; }
+.info .ins { margin-left: auto; font-size: 8.5pt; color: #555; }
+.cols { display: flex; justify-content: space-between; margin-top: 3mm; }
+.col { width: 48.5%; }
+.sec { height: 6mm; font-size: 9pt; font-weight: 700; color: #1A3A6B; border-bottom: 1px solid #1A3A6B; display: flex; align-items: center; margin-bottom: .5mm; }
+.it { display: flex; align-items: flex-end; border-bottom: .3px solid #d9dde5; padding-bottom: .6mm; }
+.it .no { width: 7mm; color: #1A3A6B; font-weight: 700; font-size: .85em; text-align: right; padding-right: 2mm; flex-shrink: 0; }
+.it .q { width: 40%; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 1.5mm; }
+.it .q.kq { font-weight: 500; font-size: .92em; }
+.it .ln { flex: 1; border-bottom: 1px solid #555; min-height: 1em; color: #1A3A6B; font-size: .88em; white-space: nowrap; overflow: hidden; padding-left: 1mm; }
+.it .ln.plain { border-bottom: none; font-weight: 500; color: #333; }
+.ft { position: absolute; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 7pt; color: #888; }`;
+function printPages(pages, title) {
+  if (!pages.length) { toast('출력할 시험지가 없어요'); return; }
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>${esc(title || '단어테스트')}</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body>${pages.join('')}</body></html>`;
+  const fr = document.getElementById('printFrame');
+  fr.onload = () => {
+    const w = fr.contentWindow;
+    const go = () => { try { w.focus(); w.print(); } catch (e) { console.error(e); } };
+    if (w.document.fonts && w.document.fonts.ready) Promise.race([w.document.fonts.ready, new Promise(r => setTimeout(r, 1500))]).then(() => setTimeout(go, 150));
+    else setTimeout(go, 400);
+  };
+  window.__lastPrint = html;
+  fr.srcdoc = html;
+}
+function sheetFor(row, items, name, ds, mode) {
+  const st = setOf(row.set);
+  const elem = st && st.cat === '초등' && st.type === '초등 단어장';
+  const title = elem ? `${st.name} 단어 테스트` : `${st.name} · ${rangeLabel(row.set, row.from, row.to)}`;
+  return sheetPages({ title, setName: st.name, name, date: ds.replace(/-/g, '.') + ` (${WD[parseYmd(ds).getDay()]})`, items, mode, elem });
+}
+
+// 시험지 만들기 → 기록 저장 → 출력
+async function makeTests(jobs, opts = {}) {
+  // jobs: [{sid, row, items?}]
+  const pages = []; const recs = [];
+  for (const j of jobs) {
+    const s = stuOf(j.sid); const row = j.row;
+    if (!setOf(row.set)) continue;
+    if (row.out === 'list') {
+      const items = poolOf(row).map(w => ({ w, dir: 'e' }));
+      pages.push(...sheetFor(row, items, s ? s.name : '', SEL_DATE, 'list'));
+      continue;
+    }
+    const items = j.items || sameDayItems(row, recs) || generate(row, j.sid);
+    if (!items.length) continue;
+    const r = { id: uid('r'), date: SEL_DATE, sid: j.sid, set: row.set, from: String(row.from), to: row.from === 'all' ? '' : String(row.to || row.from), count: String(items.length), method: row.method, words: itemsToStr(items, row.set), result: '', note: row.note || opts.note || '', created: new Date().toISOString() };
+    // 같은 날 같은 학생·같은 책을 결과 넣기 전에 다시 출력하면 → 새 줄 대신 기존 기록을 바꿈
+    const prev = DB.records.find(x => x.date === r.date && x.sid === r.sid && x.set === r.set && !x.result && x.note === r.note);
+    if (prev) { r.id = prev.id; DB.records = DB.records.filter(x => x !== prev); }
+    recs.push(r);
+    pages.push(...sheetFor(row, items, s ? s.name : '', SEL_DATE, 'test'));
+    if (row.out === 'key') pages.push(...sheetFor(row, items, s ? s.name : '', SEL_DATE, 'key'));
+  }
+  if (!pages.length) { toast('출력할 단어가 없어요 — 범위를 확인해 주세요'); return; }
+  printPages(pages, `단어테스트 ${SEL_DATE}`);
+  if (recs.length) { DB.records.push(...recs); render(); await save({ action: 'saveRecords', rows: recs }); }
+}
+async function reprint(recId, withKey) {
+  const r = DB.records.find(x => x.id === recId); if (!r) return;
+  if (!r.words) { try { const full = await apiGet({ action: 'readRecord', id: r.id }); r.words = full.words || ''; } catch (e) { toast('기록을 불러오지 못했어요'); return; } }
+  const items = strToItems(r.words, r.set); const s = stuOf(r.sid);
+  const row = { set: r.set, from: r.from, to: r.to };
+  const pages = sheetFor(row, items, s ? s.name : '', r.date, 'test');
+  if (withKey) pages.push(...sheetFor(row, items, s ? s.name : '', r.date, 'key'));
+  printPages(pages, '다시 출력');
+}
+
+// 책 끝: 마지막 범위 출력 전 다음 할 일 고르기
+function askAfter(s, plan) {
+  return new Promise(resolve => {
+    const st = setOf(plan.set);
+    openModal(`<div class="modal-h"><h2>📌 이번이 마지막이에요</h2></div>
+      <div class="modal-b"><p style="margin-bottom:12px"><b>${esc(s.name)}</b> · ${esc(st.name)}의 마지막 범위예요.<br>통과하면 다음엔 무엇을 할까요?</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn pri" id="af_next">다음 책 고르기</button>
+        <button class="btn pri" id="af_all">전체 테스트 (전체 중 100문제)</button>
+        <button class="btn pri" id="af_rev">다시 복습 (처음부터)</button>
+      </div><p class="muted" style="margin-top:10px">나중에 학생 관리에서 바꿀 수 있어요.</p></div>
+      <div class="modal-f"><button class="btn" id="af_skip">나중에 정하기</button></div>`);
+    const done = v => { closeModal(); resolve(v); };
+    document.getElementById('af_next').onclick = () => done('nextbook');
+    document.getElementById('af_all').onclick = () => done('all');
+    document.getElementById('af_rev').onclick = () => done('review');
+    document.getElementById('af_skip').onclick = () => done(null);
+  });
+}
+async function printRow(sid, i) {
+  const s = stuOf(sid); const row = buildRows(SEL_DATE, s)[i]; if (!row || !row.set) { toast('책을 먼저 골라 주세요'); return; }
+  const plan = planFor(s, row.set);
+  if (row.out !== 'list' && plan && rangeIncludesEnd(row) && !plan.after) {
+    const ch = await askAfter(s, plan);
+    if (ch) { plan.after = ch; await saveStudent(s); }
+  }
+  await makeTests([{ sid, row }]);
+}
+</script>
+<script>
+// ════════ 화면 공통 ════════
+function go(v) { VIEW = v; document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.view === v)); render(); }
+function render() {
+  renderCal(); renderSide();
+  const m = document.getElementById('main');
+  const top = m.scrollTop;
+  if (VIEW === 'today') m.innerHTML = viewToday();
+  else if (VIEW === 'students') m.innerHTML = viewStudents();
+  else if (VIEW === 'db') m.innerHTML = viewDb();
+  else if (VIEW === 'report') m.innerHTML = viewReport();
+  m.scrollTop = top;
+}
+function openModal(html, wide) { const m = document.getElementById('modal'); m.className = 'modal' + (wide ? ' wide' : ''); m.innerHTML = html; document.getElementById('modalBg').classList.add('show'); }
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+
+// ════════ 캘린더 / 사이드바 ════════
+function calMove(n) { CAL = new Date(CAL.getFullYear(), CAL.getMonth() + n, 1); renderCal(); }
+function renderCal() {
+  const y = CAL.getFullYear(), mo = CAL.getMonth();
+  document.getElementById('calMonth').textContent = `${y}년 ${mo + 1}월`;
+  const first = new Date(y, mo, 1).getDay(), days = new Date(y, mo + 1, 0).getDate();
+  const today = ymd(new Date());
+  const withRec = new Set(DB.records.map(r => r.date));
+  let h = '';
+  for (let i = 0; i < first; i++) h += '<div class="cal-day empty"></div>';
+  for (let d = 1; d <= days; d++) {
+    const ds = ymd(new Date(y, mo, d)), wd = new Date(y, mo, d).getDay();
+    const cls = ['cal-day', wd === 0 ? 'sun' : '', wd === 6 ? 'sat' : '', ds === today ? 'today' : '', ds === SEL_DATE ? 'selected' : ''].join(' ');
+    h += `<div class="${cls}" onclick="pickDate('${ds}')">${d}${withRec.has(ds) ? '<span class="dot"></span>' : ''}</div>`;
+  }
+  document.getElementById('calDays').innerHTML = h;
+}
+function pickDate(ds) { SEL_DATE = ds; SEL_CLASS = null; if (VIEW !== 'today') go('today'); else render(); }
+function pickClass(c) { SEL_CLASS = SEL_CLASS === c ? null : c; if (VIEW !== 'today') go('today'); else render(); }
+function pendingResults() { const t = ymd(new Date()); return DB.records.filter(r => r.date < t && r.result === '' && r.set); }
+function renderSide() {
+  const pr = pendingResults();
+  document.getElementById('alertSec').innerHTML = pr.length
+    ? `<div class="alert-box" onclick="openPendingModal()">⚠ 결과 안 넣은 시험 <b>${pr.length}건</b><br><span class="muted">눌러서 통과/재시험 입력</span></div>`
+    : `<div class="muted">✓ 결과 미입력 없음</div>`;
+  const on = classesOn(SEL_DATE);
+  document.getElementById('dayClasses').innerHTML = on.length ? on.map(chip).join('') : '<div class="muted">수업 없는 날</div>';
+  document.getElementById('allClasses').innerHTML = Object.keys(CLASSES).map(chip).join('');
+}
+function chip(c) {
+  const k = CLASSES[c] || {};
+  return `<div class="class-chip ${SEL_CLASS === c ? 'active' : ''}" onclick="pickClass('${esc(c)}')"><span class="class-dot" style="background:${k.color || '#888'}"></span>${esc(c)}<span class="class-time">${esc((k.time || '').slice(0, 13))}</span></div>`;
+}
+
+// ════════ 수업 화면 ════════
+function viewToday() {
+  const list = SEL_CLASS ? [SEL_CLASS] : classesOn(SEL_DATE);
+  let h = `<h1 class="page-title">${dLabel(SEL_DATE)}요일 단어테스트</h1><div class="page-sub">${SEL_CLASS ? '선택한 반만 보는 중 · 반 이름을 다시 누르면 이 날 전체 반' : '이 날 수업 반 ' + list.length + '개'}</div>`;
+  if (!list.length) return h + '<div class="card empty-msg">이 날은 수업 반이 없어요. 왼쪽 "전체 반"에서 반을 골라도 돼요.</div>';
+  for (const c of list) h += classCard(c);
+  return h;
+}
+function classCard(c) {
+  const ss = studentsOf(c); const k = CLASSES[c] || {};
+  let h = `<div class="card"><div class="card-head"><span class="class-dot" style="width:10px;height:10px;background:${k.color || '#888'}"></span><span class="ttl">${esc(c)}</span><span class="sub">${esc(k.time || '')} · ${ss.length}명</span><span class="sp"></span>
+    <button class="btn" onclick="openClassPrint('${esc(c)}')">🖨️ 반 전체 출력</button>
+    <button class="btn" onclick="openCommonTest('${esc(c)}')">👥 반 공통 시험</button>
+    <button class="btn gold" onclick="openKakao('${esc(c)}')">💬 카톡 숙제 문구</button></div>`;
+  if (!ss.length) return h + '<div class="empty-msg">이 반 학생이 없어요 (학생 관리에서 추가)</div></div>';
+  h += `<table class="grid"><colgroup><col style="width:7%"><col style="width:19%"><col style="width:50%"><col style="width:11%"><col style="width:13%"></colgroup>
+    <thead><tr><th>학생</th><th>단어테스트 현황</th><th>단어테스트 만들기</th><th>결과</th><th>숙제</th></tr></thead><tbody>`;
+  for (const s of ss) h += studentRow(s);
+  return h + '</tbody></table></div>';
+}
+function statusHtml(s) {
+  const plans = (s.plans || []).filter(p => setOf(p.set));
+  if (!plans.length) return '<span class="muted">단어책 없음</span>';
+  return plans.map(p => {
+    const st = setOf(p.set); const lr = lastRec(s.id, p.set);
+    let nx;
+    if (st.rule === 'elem_page') nx = `1~${unitLabel(p.set, p.next ?? units(p.set).slice(-1)[0]?.u)} 랜덤 ${p.count || 80}`;
+    else if (st.rule === 'elem_all') nx = `전체 랜덤 ${p.count || 80}`;
+    else if (p.done) nx = '<span class="badge b-end">📌 다음 책 고르기</span>';
+    else if (p.next === 'all') nx = `전체 정리 (${p.count || 100}문제)`;
+    else if (p.next == null || p.next === '') nx = '<span class="muted">범위 미정</span>';
+    else nx = esc(unitLabel(p.set, p.next));
+    let b = '';
+    if (lr) b += ` · ${esc(rangeLabel(lr.set, lr.from, lr.to))} ${lr.result === '통과' ? '<span class="badge b-pass">통과</span>' : lr.result === '재시험' ? '<span class="badge b-re">재시험</span>' : '<span class="badge b-abs">결과 없음</span>'} <span class="muted">${dLabel(lr.date)}</span>`;
+    const tl = testsLeft(p);
+    if (tl != null && tl <= 2) b += ` <span class="badge b-end">마지막까지 ${tl}번</span>`;
+    const cs = cumSuggest(s.id, p);
+    if (cs) b += ` <span class="badge b-cum" onclick="useCum('${s.id}','${p.set}',${cs.from},${cs.to})" title="눌러서 누적 시험 만들기">🔁 누적 추천 ${esc(rangeLabel(p.set, cs.from, cs.to))}</span>`;
+    return `<div class="st-line"><span class="bk">${esc(shortName(p.set))}</span> → <span class="nx">${nx}</span>${b}</div>`;
+  }).join('');
+}
+function setOptions(sel) {
+  const cats = ['초등', '중등', '고등'];
+  let h = '<option value="">— 책 고르기 —</option>';
+  for (const c of cats) {
+    const ss = DB.sets.filter(s => s.cat === c); if (!ss.length) continue;
+    h += `<optgroup label="${c}">` + ss.map(s => `<option value="${s.id}" ${s.id === sel ? 'selected' : ''}>${esc(s.name)}</option>`).join('') + '</optgroup>';
+  }
+  const etc = DB.sets.filter(s => !cats.includes(s.cat));
+  if (etc.length) h += '<optgroup label="기타">' + etc.map(s => `<option value="${s.id}" ${s.id === sel ? 'selected' : ''}>${esc(s.name)}</option>`).join('') + '</optgroup>';
+  return h;
+}
+function builderHtml(s, row, i) {
+  const k = `'${s.id}',${i}`;
+  let h = `<div class="bld"><select class="setsel" onchange="bSet(${k},'set',this.value)">${setOptions(row.set)}</select>`;
+  if (row.set) {
+    const st = setOf(row.set); const us = units(row.set);
+    if (st.rule === 'elem_all') h += '<span class="lbl">전체</span>';
+    else if (st.rule === 'elem_page') {
+      h += `<span class="lbl">1쪽 ~</span><select onchange="bSet(${k},'to',this.value)">${us.map(x => `<option value="${x.u}" ${String(x.u) === String(row.to) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>`;
+    } else {
+      h += `<select onchange="bSet(${k},'from',this.value)"><option value="all" ${row.from === 'all' ? 'selected' : ''}>전체</option>${us.map(x => `<option value="${x.u}" ${String(x.u) === String(row.from) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>`;
+      if (row.from !== 'all') h += `<span class="lbl">~</span><select onchange="bSet(${k},'to',this.value)">${us.filter(x => x.u >= Number(row.from)).map(x => `<option value="${x.u}" ${String(x.u) === String(row.to) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>`;
+    }
+    const pool = poolOf(row).length;
+    h += `<select onchange="bSet(${k},'count',this.value)">${COUNTS.filter(c => c === 'all' || c < pool).map(c => `<option value="${c}" ${String(c) === String(row.count) ? 'selected' : ''}>${c === 'all' ? '전체 ' + pool + '개' : c + '문항'}</option>`).join('')}${row.count !== 'all' && Number(row.count) >= pool ? `<option value="${row.count}" selected>${pool}개 (전체)</option>` : ''}</select>`;
+    h += `<select onchange="bSet(${k},'method',this.value)" title="방식">${Object.entries(METHOD_S).map(([v, t]) => `<option value="${v}" ${v === row.method ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+    h += `<select onchange="bSet(${k},'out',this.value)" title="출력">${Object.entries(OUTS_S).map(([v, t]) => `<option value="${v}" ${v === row.out ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
+    if (row.note) h += `<span class="badge b-cum">${esc(row.note)}</span>`;
+    if (row.unset) h += `<span class="badge b-re" title="학생 관리에서 다음 범위를 정해 두면 자동으로 채워져요">범위 확인</span>`;
+    h += `<button class="btn pri sm" onclick="printRow(${k})">🖨️ 출력</button>`;
+  }
+  h += ` <span class="add" onclick="bDel(${k})" title="이 줄 빼기">✕</span></div>`;
+  return h;
+}
+function studentRow(s) {
+  const ab = isAbsent(SEL_DATE, s.id);
+  const rows = buildRows(SEL_DATE, s);
+  const recs = recsOn(SEL_DATE, s.id).filter(r => r.result !== '결석');
+  let res = recs.map(r => `<div class="rec-line"><span title="${esc(rangeLabel(r.set, r.from, r.to))}">${esc(shortName(r.set)).slice(0, 9)}</span>
+    <select class="${r.result === '통과' ? 'pass' : r.result === '재시험' ? 're' : ''}" onchange="setResult('${r.id}',this.value)"><option value="" ${!r.result ? 'selected' : ''}>결과</option><option ${r.result === '통과' ? 'selected' : ''}>통과</option><option ${r.result === '재시험' ? 'selected' : ''}>재시험</option></select>
+    <span class="add" title="같은 시험지 다시 출력" onclick="reprint('${r.id}')">🔁</span>
+    <span class="add" style="color:#bbb" title="이 기록 지우기" onclick="delRec('${r.id}')">✕</span></div>`).join('');
+  res += `<button class="btn sm ${ab ? 'red' : ''}" onclick="toggleAbsent('${SEL_DATE}','${s.id}')">${ab ? '결석 취소' : '결석'}</button>`;
+  return `<tr class="${ab ? 'absent' : ''}"><td><div class="sname" onclick="openHistory('${s.id}')">${esc(s.name)}</div><div class="sschool">${esc(s.school || '')}</div>${ab ? '<span class="badge b-abs">결석</span>' : ''}</td>
+    <td>${statusHtml(s)}</td>
+    <td>${ab ? '<span class="muted">결석 — 시험은 다음 수업으로 넘어가요</span>' : rows.map((r, i) => builderHtml(s, r, i)).join('') + `<span class="add" onclick="bAdd('${s.id}')">＋ 다른 책 추가</span>`}</td>
+    <td>${res}</td>
+    <td><textarea class="hw" placeholder="숙제" onchange="saveHw('${s.id}',this.value)">${esc(hwOf(SEL_DATE, s.id))}</textarea></td></tr>`;
+}
+function bSet(sid, i, key, val) {
+  const s = stuOf(sid); const rows = buildRows(SEL_DATE, s); const row = rows[i];
+  if (key === 'set') {
+    const p = planFor(s, val);
+    rows[i] = p ? defaultRow(s, p) : { set: val, from: units(val)[0]?.u ?? 'all', to: units(val)[0]?.u ?? '', count: 'all', method: 'en2ko', out: 'test', note: '' };
+    const st = setOf(val);
+    if (!p && st && st.rule === 'elem_all') { rows[i].from = 'all'; rows[i].count = 80; }
+    if (!p && st && st.rule === 'elem_page') { rows[i].to = units(val).slice(-1)[0]?.u; rows[i].count = 80; }
+  } else {
+    row[key] = key === 'from' || key === 'to' ? (val === 'all' ? 'all' : Number(val)) : (key === 'count' && val !== 'all' ? Number(val) : val);
+    if (key === 'from' && val !== 'all') { if (row.to === '' || Number(row.to) < Number(val)) row.to = Number(val); }
+    if (key === 'from' || key === 'to') { row.note = ''; row.unset = false; }
+  }
+  render();
+}
+function bAdd(sid) { buildRows(SEL_DATE, stuOf(sid)).push({ set: '', from: 'all', to: '', count: 'all', method: 'en2ko', out: 'test', note: '' }); render(); }
+function bDel(sid, i) { buildRows(SEL_DATE, stuOf(sid)).splice(i, 1); render(); }
+function useCum(sid, setId, from, to) {
+  const s = stuOf(sid); const rows = buildRows(SEL_DATE, s);
+  let row = rows.find(r => r.set === setId);
+  if (!row) { row = { set: setId, method: 'en2ko', out: 'test' }; rows.push(row); }
+  Object.assign(row, { from, to, count: 100, note: '누적' });
+  render(); toast('누적 시험 범위를 채웠어요 — 확인 후 출력을 눌러주세요');
+}
+let HW_T = {};
+async function saveHw(sid, text) {
+  const ex = DB.homework.find(x => x.date === SEL_DATE && x.sid === sid);
+  if (ex) { ex.text = text; ex.updated = new Date().toISOString(); } else DB.homework.push({ date: SEL_DATE, sid, text, updated: new Date().toISOString() });
+  await save({ action: 'saveHomework', row: { date: SEL_DATE, sid, text, updated: new Date().toISOString() } });
+}
+
+// ════════ 반 전체 출력 / 공통 시험 / 카톡 ════════
+function openClassPrint(c) {
+  const ss = studentsOf(c).filter(s => !isAbsent(SEL_DATE, s.id));
+  let body = '';
+  for (const s of ss) {
+    const rows = buildRows(SEL_DATE, s).filter(r => r.set);
+    body += `<div style="margin-bottom:8px"><b>${esc(s.name)}</b>${rows.length ? '' : ' <span class="muted">— 단어책 없음</span>'}` +
+      rows.map((r, i) => `<label style="display:block;margin:3px 0 0 14px;font-size:12px"><input type="checkbox" class="cp" data-sid="${s.id}" data-i="${buildRows(SEL_DATE, s).indexOf(r)}" ${r.out !== 'list' && !r.unset ? 'checked' : ''}> ${esc(shortName(r.set))} · ${esc(rangeLabel(r.set, r.from, r.to))}${r.unset ? ' <span class="badge b-re">범위 미정 — 확인 필요</span>' : ''} · ${r.count === 'all' ? '전체' : r.count + '문항'} · ${OUTS[r.out]}</label>`).join('') + '</div>';
+  }
+  openModal(`<div class="modal-h"><h2>🖨️ ${esc(c)} 전체 출력 (${dLabel(SEL_DATE)})</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><p class="muted" style="margin-bottom:10px">각 학생의 "단어테스트 만들기"에 채워진 범위 그대로 한 번에 출력해요. 결석 학생은 빠져요. 마지막 범위 학생은 따로 출력하면 다음 할 일을 고를 수 있어요.</p>${body || '<div class="empty-msg">출력할 학생이 없어요</div>'}</div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="doClassPrint()">선택한 것 출력</button></div>`);
+}
+async function doClassPrint() {
+  const jobs = [...document.querySelectorAll('.cp:checked')].map(cb => { const s = stuOf(cb.dataset.sid); return { sid: s.id, row: buildRows(SEL_DATE, s)[Number(cb.dataset.i)] }; }).filter(j => j.row);
+  closeModal(); await makeTests(jobs);
+}
+let CT = null;
+function openCommonTest(c) {
+  CT = { cls: c, row: { set: '', from: 'all', to: '', count: 'all', method: 'en2ko', out: 'test', note: '공통' } };
+  renderCommon();
+}
+function renderCommon() {
+  const r = CT.row; const ss = studentsOf(CT.cls).filter(s => !isAbsent(SEL_DATE, s.id));
+  let rng = '';
+  if (r.set) {
+    const us = units(r.set);
+    rng = `<select onchange="ctSet('from',this.value)"><option value="all" ${r.from === 'all' ? 'selected' : ''}>전체</option>${us.map(x => `<option value="${x.u}" ${String(x.u) === String(r.from) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>` +
+      (r.from !== 'all' ? ` ~ <select onchange="ctSet('to',this.value)">${us.filter(x => x.u >= Number(r.from)).map(x => `<option value="${x.u}" ${String(x.u) === String(r.to) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>` : '');
+  }
+  const pool = r.set ? poolOf(r).length : 0;
+  openModal(`<div class="modal-h"><h2>👥 ${esc(CT.cls)} 반 공통 시험</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><div class="frm">
+      <label>책</label><select onchange="ctSet('set',this.value)">${setOptions(r.set)}</select>
+      <label>범위</label><div>${rng || '<span class="muted">책을 먼저 고르세요</span>'}</div>
+      <label>문항 수</label><select onchange="ctSet('count',this.value)">${COUNTS.filter(c => c === 'all' || c < pool).map(c => `<option value="${c}" ${String(c) === String(r.count) ? 'selected' : ''}>${c === 'all' ? '전체 ' + pool + '개' : c + '문항'}</option>`).join('')}</select>
+      <label>방식</label><select onchange="ctSet('method',this.value)">${Object.entries(METHOD).map(([v, t]) => `<option value="${v}" ${v === r.method ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <label>출력</label><select onchange="ctSet('out',this.value)">${Object.entries(OUTS).map(([v, t]) => `<option value="${v}" ${v === r.out ? 'selected' : ''}>${t}</option>`).join('')}</select>
+      <label>학생</label><div>${ss.map(s => `<label class="chk"><input type="checkbox" class="ctc" value="${s.id}" checked> ${esc(s.name)}</label>`).join('')}</div>
+    </div><p class="muted">모든 학생에게 같은 문제가 나가고, 이름만 학생별로 들어가요.</p></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="doCommon()" ${r.set ? '' : 'disabled'}>출력</button></div>`);
+}
+function ctSet(k, v) {
+  const r = CT.row;
+  if (k === 'set') { r.set = v; r.from = 'all'; r.to = ''; const st = setOf(v); if (st && st.rule === 'mock') r.count = 100; }
+  else if (k === 'from') { r.from = v === 'all' ? 'all' : Number(v); r.to = r.from === 'all' ? '' : r.from; }
+  else if (k === 'to') r.to = Number(v);
+  else if (k === 'count') r.count = v === 'all' ? 'all' : Number(v);
+  else r[k] = v;
+  renderCommon();
+}
+async function doCommon() {
+  const sids = [...document.querySelectorAll('.ctc:checked')].map(c => c.value);
+  if (!sids.length) { toast('학생을 골라 주세요'); return; }
+  const items = CT.row.out === 'list' ? null : generate(CT.row, sids[0]);
+  closeModal();
+  await makeTests(sids.map(sid => ({ sid, row: { ...CT.row }, items })), { note: '공통' });
+}
+function openKakao(c) {
+  const lines = studentsOf(c).map(s => [s.name, hwOf(SEL_DATE, s.id).trim()]).filter(x => x[1]);
+  const txt = `[${dLabel(SEL_DATE)} ${c} 숙제]\n` + (lines.length ? lines.map(([n, t]) => `${n}: ${t}`).join('\n') : '(입력된 숙제가 없어요)');
+  openModal(`<div class="modal-h"><h2>💬 카톡 숙제 문구</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><textarea class="kakao" id="kakaoTxt">${esc(txt)}</textarea></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">닫기</button><button class="btn gold" onclick="copyText(document.getElementById('kakaoTxt').value)">📋 복사</button></div>`);
+}
+
+// ════════ 학생 기록 / 결과 미입력 ════════
+function recLine(r, showName) {
+  const s = stuOf(r.sid);
+  if (r.result === '결석') return `<tr><td>${dLabel(r.date)}</td>${showName ? `<td>${esc(s ? s.name : '')}</td>` : ''}<td colspan="3"><span class="badge b-abs">결석</span></td><td><button class="btn sm red" onclick="delRec('${r.id}')">삭제</button></td></tr>`;
+  return `<tr><td>${dLabel(r.date)}</td>${showName ? `<td>${esc(s ? s.name : '')}</td>` : ''}<td>${esc(shortName(r.set))}<br><span class="muted">${esc(rangeLabel(r.set, r.from, r.to))} · ${r.count}문항${r.note ? ' · ' + esc(r.note) : ''}</span></td>
+    <td><select onchange="setResult('${r.id}',this.value).then(()=>{})"><option value="" ${!r.result ? 'selected' : ''}>—</option><option ${r.result === '통과' ? 'selected' : ''}>통과</option><option ${r.result === '재시험' ? 'selected' : ''}>재시험</option></select></td>
+    <td><button class="btn sm" onclick="reprint('${r.id}')">🔁 다시 출력</button> <button class="btn sm" onclick="reprint('${r.id}',true)">+정답지</button></td>
+    <td><button class="btn sm red" onclick="delRec('${r.id}')">삭제</button></td></tr>`;
+}
+function openHistory(sid) {
+  const s = stuOf(sid);
+  const rs = recsOf(sid).sort((a, b) => (b.date + b.created).localeCompare(a.date + a.created));
+  openModal(`<div class="modal-h"><h2>📋 ${esc(s.name)} 단어테스트 기록</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b">${rs.length ? `<table class="grid"><thead><tr><th>날짜</th><th>책 · 범위</th><th>결과</th><th>출력</th><th></th></tr></thead><tbody>${rs.map(r => recLine(r, false)).join('')}</tbody></table>` : '<div class="empty-msg">아직 기록이 없어요</div>'}</div>`, true);
+}
+function openPendingModal() {
+  const rs = pendingResults().sort((a, b) => a.date.localeCompare(b.date));
+  openModal(`<div class="modal-h"><h2>⚠ 결과 안 넣은 시험</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b">${rs.length ? `<table class="grid"><thead><tr><th>날짜</th><th>학생</th><th>책 · 범위</th><th>결과</th><th>출력</th><th></th></tr></thead><tbody>${rs.map(r => recLine(r, true)).join('')}</tbody></table>` : '<div class="empty-msg">모두 입력했어요 👍</div>'}</div>`, true);
+}
+async function delRec(id) {
+  if (!confirm('이 기록을 삭제할까요?')) return;
+  DB.records = DB.records.filter(r => r.id !== id);
+  await save({ action: 'deleteRecord', id });
+  closeModal(); render();
+}
+</script>
+<script>
+// ════════ 학생 관리 ════════
+function viewStudents() {
+  let h = `<h1 class="page-title">학생 관리</h1><div class="page-sub">학생별 단어책·다음 범위·한 번 분량을 정해요. 학원관리 앱과는 따로 저장돼요.</div>
+    <div style="margin-bottom:14px;display:flex;gap:8px"><button class="btn pri" onclick="editStudent('')">＋ 학생 추가</button><button class="btn" onclick="editClasses()">⚙️ 반 설정</button></div>`;
+  const names = Object.keys(CLASSES);
+  const other = [...new Set(DB.students.map(s => s.cls))].filter(c => !names.includes(c));
+  for (const c of [...names, ...other]) {
+    const ss = DB.students.filter(s => s.cls === c).sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+    if (!ss.length) continue;
+    h += `<div class="card"><div class="card-head"><span class="ttl">${esc(c)}</span><span class="sub">${ss.length}명</span></div><table class="grid"><thead><tr><th style="width:14%">학생</th><th>단어책 (다음 범위 · 한 번 분량 · 방식)</th><th style="width:18%">메모</th><th style="width:8%"></th></tr></thead><tbody>` +
+      ss.map(s => `<tr class="${s.active === '0' ? 'absent' : ''}"><td><b>${esc(s.name)}</b><div class="sschool">${esc(s.school || '')}${s.active === '0' ? ' · 쉬는 중' : ''}</div></td>
+        <td>${(s.plans || []).map(p => `<div class="st-line"><span class="bk">${esc(shortName(p.set))}</span> · ${planDesc(p)}</div>`).join('') || '<span class="muted">없음</span>'}</td>
+        <td class="muted">${esc(s.memo || '')}</td><td><button class="btn sm" onclick="editStudent('${s.id}')">수정</button></td></tr>`).join('') + '</tbody></table></div>';
+  }
+  return h;
+}
+function planDesc(p) {
+  const st = setOf(p.set); if (!st) return '<span class="muted">(없는 책)</span>';
+  const m = METHOD[p.method] ? METHOD[p.method].split(' ')[0] : '';
+  if (st.rule === 'elem_page') return `1~${esc(unitLabel(p.set, p.next))} 랜덤 ${p.count || 80} · ${m}`;
+  if (st.rule === 'elem_all') return `전체 랜덤 ${p.count || 80} (새 단어 추가 후 신규 20+기존 60) · ${m}`;
+  const nx = p.done ? '📌 다음 책 고르기' : p.next === 'all' ? `전체 ${p.count || 100}문제` : p.next == null || p.next === '' ? '범위 미정' : unitLabel(p.set, p.next);
+  return `다음 <b>${esc(nx)}</b> · ${p.amt ? p.amt + '개씩' : '분량 그날 정함'}${p.count ? ' · ' + p.count + '문항' : ''} · ${m}`;
+}
+let ED = null;
+function editStudent(id) {
+  const s = id ? stuOf(id) : null;
+  ED = s ? JSON.parse(JSON.stringify(s)) : { id: uid('s'), name: '', cls: SEL_CLASS || Object.keys(CLASSES)[0] || '', school: '', plans: [], memo: '', active: '1', order: 999, _new: true };
+  renderEdit();
+}
+function renderEdit() {
+  const s = ED;
+  const plans = s.plans.map((p, i) => {
+    const st = setOf(p.set); const us = units(p.set);
+    let nx = '';
+    if (st && st.rule === 'elem_all') nx = '<span class="muted" style="font-size:11px">전체</span>';
+    else if (st) nx = `<select onchange="edPlan(${i},'next',this.value)">${st.rule === 'elem_page' ? '' : `<option value="" ${p.next == null || p.next === '' ? 'selected' : ''}>범위 미정</option><option value="all" ${p.next === 'all' ? 'selected' : ''}>전체 정리</option>`}${us.map(x => `<option value="${x.u}" ${String(x.u) === String(p.next) ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>`;
+    return `<div class="plan-row"><select onchange="edPlan(${i},'set',this.value)">${setOptions(p.set)}</select>${nx || '<span></span>'}
+      <select onchange="edPlan(${i},'amt',this.value)"><option value="">그날 정함</option>${[1, 2, 3, 4, 5].map(n => `<option value="${n}" ${String(p.amt) === String(n) ? 'selected' : ''}>${n}개씩</option>`).join('')}</select>
+      <select onchange="edPlan(${i},'method',this.value)">${Object.entries(METHOD).map(([v, t]) => `<option value="${v}" ${v === p.method ? 'selected' : ''}>${t.split(' ')[0]}</option>`).join('')}</select>
+      <select onchange="edPlan(${i},'count',this.value)"><option value="">범위 전체</option>${[20, 30, 40, 50, 60, 80, 100].map(n => `<option value="${n}" ${String(p.count) === String(n) ? 'selected' : ''}>${n}문항</option>`).join('')}</select>
+      <button class="btn sm red" onclick="ED.plans.splice(${i},1);renderEdit()">✕</button></div>${p.done ? `<div class="muted" style="margin:-3px 0 6px">📌 책을 끝냈어요 — 다음 책을 추가하거나 범위를 다시 정하면 표시가 없어져요 <button class="btn sm" onclick="delete ED.plans[${i}].done;renderEdit()">표시 지우기</button></div>` : ''}`;
+  }).join('');
+  openModal(`<div class="modal-h"><h2>${s._new ? '학생 추가' : esc(s.name) + ' 수정'}</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><div class="frm">
+      <label>이름</label><input id="ed_name" value="${esc(s.name)}">
+      <label>반</label><select id="ed_cls">${Object.keys(CLASSES).map(c => `<option ${c === s.cls ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select>
+      <label>학교·학년</label><input id="ed_school" value="${esc(s.school || '')}">
+      <label>메모</label><input id="ed_memo" value="${esc(s.memo || '')}">
+      <label>상태</label><select id="ed_active"><option value="1" ${s.active !== '0' ? 'selected' : ''}>다니는 중</option><option value="0" ${s.active === '0' ? 'selected' : ''}>쉬는 중 (수업 화면에서 숨김)</option></select>
+    </div>
+    <div style="font-weight:700;margin:6px 0">단어책</div>
+    <div class="plan-head"><span>책</span><span>다음 범위</span><span>한 번 분량</span><span>방식</span><span>문항 수</span><span></span></div>
+    ${plans || '<div class="muted" style="margin-bottom:6px">아직 없어요</div>'}
+    <button class="btn sm" onclick="edKeep();ED.plans.push({set:'',next:null,amt:1,method:'en2ko',count:null});renderEdit()">＋ 단어책 추가</button></div>
+    <div class="modal-f">${s._new ? '' : `<button class="btn red" style="margin-right:auto" onclick="delStudent('${s.id}')">삭제</button>`}<button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveEdit()">저장</button></div>`);
+}
+function edKeep() {
+  const g = id => document.getElementById(id);
+  if (!g('ed_name')) return;
+  Object.assign(ED, { name: g('ed_name').value.trim(), cls: g('ed_cls').value, school: g('ed_school').value.trim(), memo: g('ed_memo').value.trim(), active: g('ed_active').value });
+}
+function edPlan(i, k, v) {
+  edKeep(); const p = ED.plans[i];
+  if (k === 'set') { p.set = v; const st = setOf(v); p.next = st && st.rule === 'elem_page' ? units(v)[0]?.u : (units(v)[0]?.u ?? null); if (st && st.rule.startsWith('elem')) { p.count = 80; p.amt = null; } delete p.done; delete p.after; }
+  else if (k === 'next') { p.next = v === '' ? null : v === 'all' ? 'all' : Number(v); if (v === 'all' && !p.count) p.count = 100; delete p.done; }
+  else if (k === 'amt') p.amt = v ? Number(v) : null;
+  else if (k === 'count') p.count = v ? Number(v) : null;
+  else p[k] = v;
+  renderEdit();
+}
+async function saveEdit() {
+  edKeep();
+  if (!ED.name) { toast('이름을 넣어 주세요'); return; }
+  ED.plans = ED.plans.filter(p => p.set);
+  const isNew = ED._new; delete ED._new;
+  const i = DB.students.findIndex(s => s.id === ED.id);
+  if (i >= 0) DB.students[i] = ED; else { ED.order = DB.students.length + 1; DB.students.push(ED); }
+  for (const k in BUILD) if (k.endsWith('|' + ED.id)) delete BUILD[k];
+  closeModal(); render();
+  await saveStudent(ED); toast(isNew ? '학생을 추가했어요' : '저장했어요');
+}
+async function delStudent(id) {
+  if (!confirm('이 학생을 삭제할까요? (시험 기록은 남아요)')) return;
+  DB.students = DB.students.filter(s => s.id !== id);
+  closeModal(); render();
+  await save({ action: 'deleteStudent', id });
+}
+function editClasses() {
+  const rows = Object.entries(CLASSES).map(([n, c]) => `<div class="plan-row" style="grid-template-columns:1.4fr 1.4fr 1.4fr .5fr 30px"><input class="cl_n" data-o="${esc(n)}" value="${esc(n)}"><input class="cl_d" value="${(c.days || []).map(d => WD[d]).join(',')}" placeholder="월,수"><input class="cl_t" value="${esc(c.time || '')}" placeholder="시간"><input class="cl_c" type="color" value="${c.color || '#888888'}"><button class="btn sm red" onclick="this.parentElement.remove()">✕</button></div>`).join('');
+  openModal(`<div class="modal-h"><h2>⚙️ 반 설정</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><div class="plan-head" style="grid-template-columns:1.4fr 1.4fr 1.4fr .5fr 30px"><span>반 이름</span><span>요일 (예: 월,수)</span><span>시간</span><span>색</span><span></span></div><div id="clRows">${rows}</div>
+    <button class="btn sm" onclick="document.getElementById('clRows').insertAdjacentHTML('beforeend','<div class=&quot;plan-row&quot; style=&quot;grid-template-columns:1.4fr 1.4fr 1.4fr .5fr 30px&quot;><input class=&quot;cl_n&quot;><input class=&quot;cl_d&quot; placeholder=&quot;월,수&quot;><input class=&quot;cl_t&quot;><input class=&quot;cl_c&quot; type=&quot;color&quot; value=&quot;#3a6ea5&quot;><span></span></div>')">＋ 반 추가</button>
+    <p class="muted" style="margin-top:8px">반 이름을 바꾸면 그 반 학생들도 새 이름으로 옮겨져요. 이 설정은 구글시트에 저장돼서 인터넷 기록을 지워도 남아요.</p></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveClasses()">저장</button></div>`);
+}
+async function saveClasses() {
+  const out = {}; const rename = {};
+  document.querySelectorAll('#clRows .plan-row').forEach((r, i) => {
+    const n = r.querySelector('.cl_n').value.trim(); if (!n) return;
+    const days = r.querySelector('.cl_d').value.split(/[,\s·]+/).map(x => WD.indexOf(x.trim())).filter(x => x >= 0);
+    const o = r.querySelector('.cl_n').dataset.o || '';
+    const prev = CLASSES[o] || {};
+    out[n] = { ...prev, days, time: r.querySelector('.cl_t').value.trim(), color: r.querySelector('.cl_c').value };
+    if (o && o !== n) rename[o] = n;
+  });
+  CLASSES = out; DB.settings.classes = JSON.stringify(out);
+  const moved = DB.students.filter(s => rename[s.cls]);
+  moved.forEach(s => s.cls = rename[s.cls]);
+  closeModal(); render();
+  await save({ action: 'saveSetting', key: 'classes', value: JSON.stringify(out) });
+  for (const s of moved) await saveStudent(s);
+  toast('반 설정을 저장했어요');
+}
+
+// ════════ 단어DB ════════
+function viewDb() {
+  let h = `<h1 class="page-title">단어DB</h1><div class="page-sub">전체 ${WORDS.length.toLocaleString()}단어 · 세트 ${DB.sets.length}개 · 뜻 칸을 눌러 바로 고칠 수 있어요</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px"><input id="dbq" placeholder="🔍 단어 검색 (영어 또는 뜻)" value="${esc(DB_SEL.q)}" style="flex:1;max-width:420px;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:13px" onkeydown="if(event.key==='Enter'){DB_SEL.q=this.value;DB_SEL.set=null;render()}">
+    <button class="btn" onclick="DB_SEL.q=document.getElementById('dbq').value;DB_SEL.set=null;render()">검색</button>
+    <span class="sp" style="flex:1"></span><button class="btn" onclick="document.getElementById('importFile').click()">📥 세트 불러오기 (Claude가 만든 파일)</button></div>`;
+  if (DB_SEL.q) return h + searchHtml(DB_SEL.q);
+  if (DB_SEL.set) return h + setDetail(DB_SEL.set);
+  const users = {}; DB.students.forEach(s => (s.plans || []).forEach(p => (users[p.set] = users[p.set] || []).push(s.name)));
+  for (const c of ['초등', '중등', '고등', ...new Set(DB.sets.map(s => s.cat).filter(c => !['초등', '중등', '고등'].includes(c)))]) {
+    const ss = DB.sets.filter(s => s.cat === c); if (!ss.length) continue;
+    h += `<div class="tree-cat">${esc(c)}</div>`;
+    for (const t of [...new Set(ss.map(s => s.type))]) {
+      h += `<div class="tree-type">${esc(t)}</div>`;
+      h += ss.filter(s => s.type === t).map(s => `<div class="set-row" onclick="DB_SEL.set='${s.id}';DB_SEL.u=null;render()"><span class="nm">${esc(s.name)}</span>
+        <span class="mt">${(BYSET[s.id] || []).length.toLocaleString()}단어 · ${unitSummary(s)}</span>
+        <span class="mt" style="width:220px;text-align:right">${users[s.id] ? '👤 ' + esc(users[s.id].join(', ')) : ''}</span><span class="mt">${esc(s.created || '')}</span></div>`).join('');
+    }
+  }
+  return h;
+}
+function unitSummary(s) {
+  const us = units(s.id); const idx = us.filter(x => /^INDEX /.test(x.label)).length;
+  if (s.unitName === '쪽') return us.length + '쪽';
+  return `${s.unitName} ${us.length - idx}개` + (idx ? ` · INDEX ${idx}쪽` : '');
+}
+function setDetail(id) {
+  const st = setOf(id); const us = units(id);
+  if (DB_SEL.u == null && us.length) DB_SEL.u = us[0].u;
+  const ws = (BYSET[id] || []).filter(w => w.u === DB_SEL.u);
+  return `<div style="margin-bottom:10px"><button class="btn sm" onclick="DB_SEL.set=null;render()">← 목록</button> <b style="font-size:15px;margin-left:6px">${esc(st.name)}</b> <span class="muted">${esc(st.memo || '')}</span></div>
+    <div style="margin-bottom:10px">${us.map(x => `<span class="unit-chip ${x.u === DB_SEL.u ? 'on' : ''}" onclick="DB_SEL.u=${x.u};render()">${esc(x.label)} <span style="opacity:.6">${x.n}</span></span>`).join('')}</div>
+    <div class="card" style="padding:8px 12px">${wordTable(ws, false)}</div>`;
+}
+function wordTable(ws, showSet) {
+  return `<table class="wt"><thead><tr>${showSet ? '<th>세트 · 단위</th>' : ''}<th>영어</th><th>뜻</th><th style="width:16%">문항·비고</th></tr></thead><tbody>${ws.map(w => `<tr>${showSet ? `<td class="muted">${esc(shortName(w.set))} · ${esc(w.unit)}</td>` : ''}<td class="en">${esc(w.en)}</td>
+    <td><input value="${esc(w.ko)}" onchange="editWord('${w.id}',this.value)"></td><td class="muted">${esc([w.q, w.kind, w.src === 'claude' ? 'Claude가 채운 뜻' : w.src].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table>`;
+}
+function searchHtml(q) {
+  const k = q.trim().toLowerCase(); if (!k) return '';
+  const hits = WORDS.filter(w => w.en.toLowerCase().includes(k) || w.ko.includes(q.trim()));
+  hits.sort((a, b) => (a.en.toLowerCase() === k ? 0 : 1) - (b.en.toLowerCase() === k ? 0 : 1));
+  return `<div style="margin-bottom:8px"><button class="btn sm" onclick="DB_SEL.q='';render()">← 목록</button> <b>"${esc(q)}"</b> ${hits.length}개${hits.length > 300 ? ' (앞 300개만 보여요)' : ''}</div>
+    <div class="card" style="padding:8px 12px">${hits.length ? wordTable(hits.slice(0, 300), true) : '<div class="empty-msg">없어요</div>'}</div>`;
+}
+async function editWord(id, ko) {
+  const w = W[id]; if (!w) return;
+  w.ko = ko.trim(); w.src = '수정';
+  await save({ action: 'updateWord', id, ko: w.ko });
+  const c = await idbGet('words');
+  if (c) { const r = c.rows.find(x => x[0] === id); if (r) { r[5] = w.ko; r[8] = '수정'; } c.ver = String(Number(c.ver || 1) + 1); DB.settings.wordsVer = c.ver; idbSet('words', c); }
+  toast('뜻을 고쳤어요');
+}
+// Claude가 만든 등록 파일: {set:{id,cat,type,name,unitName,rule,memo}, words:[[unit,u,en,ko,q,kind,src,added],...]} 또는 그 배열
+async function onImportFile(inp) {
+  const f = inp.files[0]; inp.value = ''; if (!f) return;
+  let data; try { data = JSON.parse(await f.text()); } catch (e) { toast('파일을 읽지 못했어요'); return; }
+  const packs = Array.isArray(data) ? data : [data];
+  const bad = packs.find(p => !p.set || !p.set.id || !Array.isArray(p.words));
+  if (bad) { toast('단어DB 등록 파일이 아니에요'); return; }
+  const desc = packs.map(p => `• ${esc(p.set.name || p.set.id)} — ${p.words.length}단어 ${setOf(p.set.id) ? '(기존 세트에 추가)' : '(새 세트)'}`).join('<br>');
+  openModal(`<div class="modal-h"><h2>📥 세트 불러오기</h2><button class="modal-x" onclick="closeModal()">×</button></div>
+    <div class="modal-b"><p style="line-height:1.8">${desc}</p></div>
+    <div class="modal-f"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" id="impGo">단어DB에 등록</button></div>`);
+  document.getElementById('impGo').onclick = async () => {
+    document.getElementById('impGo').disabled = true; document.getElementById('impGo').textContent = '등록 중…';
+    try {
+      for (const p of packs) {
+        await apiPost({ action: 'importSet', set: p.set, words: p.words });
+        const i = DB.sets.findIndex(s => s.id === p.set.id);
+        if (i >= 0) DB.sets[i] = { ...DB.sets[i], ...p.set }; else DB.sets.push({ created: ymd(new Date()), ...p.set });
+      }
+      await reloadWords(); closeModal(); render(); toast('단어DB에 등록했어요');
+    } catch (e) { toast('등록 실패: ' + e.message, 5000); document.getElementById('impGo').disabled = false; document.getElementById('impGo').textContent = '다시 시도'; }
+  };
+}
+
+// ════════ 월간 보고 ════════
+let RP = { month: SEL_DATE.slice(0, 7), cls: '' };
+function viewReport() {
+  const ms = [...new Set([RP.month, ...DB.records.map(r => r.date.slice(0, 7))])].sort().reverse();
+  let h = `<h1 class="page-title">월간 단어 보고</h1><div class="page-sub">학부모 문자용 문구예요. 복사해서 보내세요.</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px"><select onchange="RP.month=this.value;render()" style="padding:6px">${ms.map(m => `<option ${m === RP.month ? 'selected' : ''} value="${m}">${m.replace('-', '년 ')}월</option>`).join('')}</select>
+    <select onchange="RP.cls=this.value;render()" style="padding:6px"><option value="">전체 반</option>${Object.keys(CLASSES).map(c => `<option ${c === RP.cls ? 'selected' : ''}>${esc(c)}</option>`).join('')}</select></div>`;
+  const ss = activeStudents().filter(s => !RP.cls || s.cls === RP.cls).sort((a, b) => a.cls.localeCompare(b.cls) || a.order - b.order);
+  for (const s of ss) {
+    const t = reportText(s, RP.month); if (!t) continue;
+    h += `<div class="card"><div class="card-head"><span class="ttl">${esc(s.name)}</span><span class="sub">${esc(s.cls)}</span><span class="sp"></span><button class="btn gold sm" onclick="copyText(this.closest('.card').querySelector('textarea').value)">📋 복사</button></div>
+      <div style="padding:10px 14px"><textarea class="kakao" style="min-height:120px">${esc(t)}</textarea></div></div>`;
+  }
+  return h;
+}
+function reportText(s, month) {
+  const rs = recsOf(s.id).filter(r => r.date.startsWith(month)).sort((a, b) => (a.date + a.created).localeCompare(b.date + b.created));
+  if (!rs.length) return '';
+  const m = Number(month.slice(5));
+  const absent = rs.filter(r => r.result === '결석').length;
+  const by = {};
+  rs.filter(r => r.set).forEach(r => (by[r.set] = by[r.set] || []).push(r));
+  let t = `[${m}월 단어테스트 보고] ${s.name}\n`;
+  const tests = rs.filter(r => r.set);
+  const pass = tests.filter(r => r.result === '통과').length, re = tests.filter(r => r.result === '재시험').length;
+  t += `· 이번 달 단어테스트 ${tests.length}회 (통과 ${pass}회${re ? ', 재시험 ' + re + '회' : ''})\n`;
+  for (const [setId, list] of Object.entries(by)) {
+    const st = setOf(setId); if (!st) continue;
+    const nums = list.filter(r => r.from !== 'all' && r.from !== '');
+    let rg = '';
+    if (PROG_RULES.includes(st.rule) && nums.length) {
+      const a = Math.min(...nums.map(r => Number(r.from))), b = Math.max(...nums.map(r => Number(r.to || r.from)));
+      rg = ' ' + rangeLabel(setId, a, b);
+    }
+    const p = list.filter(r => r.result === '통과').length;
+    t += `· ${st.name}${rg}: ${list.length}회 중 ${p}회 통과\n`;
+  }
+  const plans = (s.plans || []).filter(p => setOf(p.set) && PROG_RULES.includes(setOf(p.set).rule) && p.next != null && p.next !== '' && !p.done);
+  if (plans.length) t += `· 다음 진도: ` + plans.map(p => `${setOf(p.set).name} ${p.next === 'all' ? '전체 정리' : unitLabel(p.set, p.next)}`).join(', ') + '\n';
+  if (absent) t += `· 결석 ${absent}회\n`;
+  t += `감사합니다.\n- 탑클래스 입시영어`;
+  return t;
+}
+
+boot();
+</script>
+</body>
+</html>
